@@ -1,0 +1,212 @@
+{% load i18n %}
+{% load markup %}
+{% load custom_tags %}
+{% load wikitags %}
+
+{% comment %}
+<!--
+  Copyright (C) 2011 Carnegie Mellon University.
+  All rights reserved.
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as
+  published by the Free Software Foundation, either version 3 of the
+  License, or (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU Affero General Public License for more details.
+
+  You should have received a copy of the GNU Affero General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+	
+	The latest modified Date: Dec., 2011
+	Author: Baek Hwan Cho @CMU
+-->
+{% endcomment %}
+
+
+<script>
+	function select_item()
+	{
+		var Opt_featset = document.getElementById('featureset');
+		Featureset_selected = ""
+		for (var i=0; i<Opt_featset.options.length; i++) {
+	    if (Opt_featset.options[i].selected) {
+	      Featureset_selected = Opt_featset.options[i].value;
+	    }
+	  }
+	  
+		//var  = $("select[name='Channel_select']");
+		var Opt_channel = document.getElementById('C_select');
+		Channel_selected = ""
+		for (var i=0; i<Opt_channel.options.length; i++) {
+	    if (Opt_channel.options[i].selected) {
+	      Channel_selected = Opt_channel.options[i].value;
+	    }
+	  }
+	  
+	  var Opt_Z = document.getElementById('Z_select');
+		Z_selected = ""
+		for (var i=0; i<Opt_Z.options.length; i++) {
+	    if (Opt_Z.options[i].selected) {
+	      Z_selected = Opt_Z.options[i].value;
+	    }
+	  }
+	  
+	  var Opt_T = document.getElementById('T_select');
+		T_selected = ""
+		for (var i=0; i<Opt_T.options.length; i++) {
+	    if (Opt_T.options[i].selected) {
+	      T_selected = Opt_T.options[i].value;
+	    }
+	  }
+	  
+	  window.returnValue =Featureset_selected + "_"+Channel_selected.toString() + "."+ Z_selected.toString()+ "."+ T_selected.toString();
+		window.close();
+		//targetitem.value = item;
+		//alert(Channel_selected);
+		//top.close();
+		
+		return false;
+	}
+	
+	
+	
+</script>
+
+<script type="text/javascript">
+
+function featureOnChange(obj) { 
+		 if (!document.layers) { 
+				 var txt = document.getElementById("otherTitle"); 
+				 if (obj.value == "other") { 
+						 txt.style.display = "inline"; 
+						 // gives the text field the name of the drop-down, for easy processing 
+						 txt.name = "selTitle"; 
+						 obj.name = ""; 
+				 } else { 
+						 txt.style.display = "none"; 
+						 txt.name = ""; 
+						 obj.name = "selTitle"; 
+				 } 
+		 } 
+} 
+
+</script>
+
+
+<CENTER>
+	<div class="toolbar_noborder">
+		<B>Select Feature Set, Channel, Depth, and Timepoint</B>
+	</div>
+	<BR>
+	
+	<div class="toolbar_noborder">
+		<form>
+			<label for="Featureset_select">Feature Set</label>
+				<script type="text/javascript">
+					var numFeatset = 0;
+					var featsets=new Array()
+					{% for result in results %}
+					featsets[numFeatset] = "{{result.featuresetName}}";
+					numFeatset += 1;
+					{% endfor %}
+
+					var txt=""
+					txt = '<select id="Featureset_select" onchange="featureOnChange(this);">';
+					for (i=0; i<featsets.length; i=i+1)
+					{
+						txt += '<option value="'+featsets[i].toString()+'">'+featsets[i].toString()+'</option>';
+					}
+					txt += '</select>';
+					document.write(txt)
+				</script>
+			<BR>
+
+
+
+
+
+			<label for="Channel_select">Channel (C)</label>
+				<script type="text/javascript">
+					var numFeatset = 0;
+					var channelSets=new Array()
+					{% for result in results %}
+					channelSets[numFeatset] = "{% for channel in result.channels %} {{channel}} {% endfor %}";
+					alert(channelSets[numFeatset]);
+					numFeatset += 1;
+					{% endfor %}
+
+
+					var txt=""
+					if (numC == 1){
+						txt = '<select id="C_select" disabled="disabled">';
+						{% for c in channelnames %}
+  						txt += '<option value="0">'+ "{{ c }}" + '</option>';
+						{% endfor %}	
+					} else {
+						txt = '<select id="C_select">';
+						var count = 0;
+						{% for c in channelnames %}
+  						txt += '<option value="'+count.toString()+'">'+ "{{ c }}" + '</option>';
+  						count += 1;
+						{% endfor %}						
+					}
+					txt += '</select>';
+					document.write(txt)
+				</script>
+			<BR>
+
+
+
+
+
+			<label>Results</label>
+				<script type="text/javascript">
+
+					var featuresets = "{{ result.featuresetName }}";
+					
+					{% for result in results %}
+					var numCs = "{{ result.sizeC }}";
+					numC = parseInt(numCs, 10);
+					var names = "{% for i in result.featuersetName %} {{i}} {% endfor %}";
+//					alert(names);
+
+					var txt=""
+					
+					if (numC == 1){
+
+						txt = '<select id="featureset" disabled="disabled">';
+						txt +='<option value="0">'+ names + '</option>';
+						
+
+					} else {
+						txt = '<select id="FEATURESET">';
+						
+						var count = 0;
+						txt += '<option value="'+count.toString()+'">'+ "{{ c }}" + '</option>';
+						for (i=0;i< numC ;i++)
+						{
+							txt +='<option value="0">'+ names[i] + '</option>';
+							count += 1;
+						}
+						
+					}
+					txt += '</select>';
+					{% endfor %}
+					document.write(txt)
+				</script>
+			<BR/>
+
+		</form>
+	</div>
+	
+	<div class="toolbar_noborder">
+		<form>
+			<input type="button" value="OK" onClick="return select_item()"/>
+		</form>
+	</div>
+
+</CENTER>

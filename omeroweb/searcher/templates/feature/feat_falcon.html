@@ -1,0 +1,71 @@
+{% load i18n %}
+{% load markup %}
+{% load custom_tags %}
+{% load wikitags %}
+
+{% block jscript %}
+    <script type="text/javascript" src="{% url webstatic "javascript/ui/ui.core.js" %}"></script>
+    <script type="text/javascript" src="{% url webstatic "javascript/ui/ui.selectable.js" %}"></script>
+    <script type="text/javascript" src="{% url webstatic "javascript/jquery.tablesorter.js" %}"></script>
+ 
+
+{% endblock %}
+
+{% if param.containers.Obj_ID %}
+		<div class="clear"></div>
+    <div>
+   		<h1>{% trans "Object ID" %}</h1>
+   		<p>{% for i in param.containers.Obj_ID %}{{ i}}{% endfor %}</p>
+   		
+  	</div>
+  	<div class="clear"></div>
+    <div>
+   		<h1>{% trans "Feature Set" %}</h1>
+   		<p>{{  param.containers.Feature_Set }}</p>
+   		
+  	</div>
+    <div class="clear"></div>
+    <div>
+      <h1>{% trans "Feature calculation results" %}</h1>
+      <div>
+    	  <table id="dataTable" class="tablesorter">
+            <thead> 
+                <tr> 
+                    <th width=30% class="desc">{% trans "Image ID" %}</th> 
+                    <th width=70% class="desc">{% trans "Result" %}</th> 
+                </tr> 
+            </thead>
+            <tbody>
+                {% for c in param.containers.Answers %}
+                    <tr>
+                        <td width=30% class="desc">{{ c.iid}}</td>
+                        <td style="overflow:hidden" width=70% class="desc">{{ c.ANSWER}}</td>  
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+  	</div>
+  	<div class="clear"></div>
+  	<div>
+      <h1>{% trans "Content DB update results" %}</h1>
+      <div>
+    	  <table id="dataTable2" class="tablesorter">
+            <thead> 
+                <tr> 
+                    <th class="desc">{% trans "Result" %}</th> 
+                </tr> 
+            </thead>
+            <tbody>
+                {% for d in param.containers.Answers_contentDB %}
+			            <tr>
+											<td class="desc">{{ d.ANSWER}}</td>
+	                </tr>
+			          {% endfor %}
+            </tbody>
+        </table>
+      </div>
+  	</div>
+
+{% else %}
+    <p>{% trans "No data." %}</p>
+{% endif %}

@@ -1,0 +1,203 @@
+{% extends "webclient/base/base_container.html" %}
+{% load i18n %}
+{% load markup %}
+{% load custom_tags %}
+{% load wikitags %}
+{% comment %}
+<!--
+  Copyright (C) 2012 Carnegie Mellon University.
+  All rights reserved.
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as
+  published by the Free Software Foundation, either version 3 of the
+  License, or (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU Affero General Public License for more details.
+
+  You should have received a copy of the GNU Affero General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+	
+	The latest modified Date: Feb., 2012
+	Author: Baek Hwan Cho @CMU
+-->
+{% endcomment %}
+{% block link %}
+    <link rel="stylesheet" href="{% url webstatic "css/container.css" %}" type="text/css" media="screen"/>
+    <link rel="stylesheet" href="{% url webstatic "css/images.css" %}" type="text/css" media="screen"/>
+    <link rel="stylesheet" href="{% url webstatic "css/tree.css" %}" type="text/css" media="screen"/>
+    <link rel="stylesheet" href="{% url webstatic "css/table.css" %}" type="text/css" media="screen"/>
+{% endblock %}
+
+
+{% block jscript %}
+    <script type="text/javascript" src="{% url webstatic "javascript/ui/ui.core.js" %}"></script>
+    <script type="text/javascript" src="{% url webstatic "javascript/ui/ui.selectable.js" %}"></script>
+    <script type="text/javascript" src="{% url webstatic "javascript/jquery.tablesorter.js" %}"></script>
+     <script type="text/javascript">
+     		/////////////////////////// The SERVER ADMIN may want to set this featuresets variable for their own purpose
+     		//var featsets = new Array("slf33", "slf34");	
+     		var featsets = new Array("slf34");
+        $(document).ready(function() 
+            {
+                var h = $(window).height()-200;
+                $("div#configuration").css('height', h+11);
+                $("div#content_details").css('height', h+31);
+
+         
+                
+		            $("#feat_calc_button").click(function() { 
+		            				var url_str = null;
+		            				
+		            				var objecttype = "{% for i in param.containers.Obj_Type %}{{ i}}{% endfor %}";
+		            				url_str = objecttype;
+
+		            				var objectID = "{% for i in param.containers.Obj_ID %}{{ i}}{% endfor %}";
+		            				url_str += "/" + objectID;
+
+		            				var featureset = $("select[name='FeatureSet']");
+												url_str += "/" + featureset.val();
+												
+												var contentDB = "";
+												contentDB += "y-";
+												var datasetID ="{% for i in param.containers.Dataset_ID %} {{ i }} {% endfor %}";
+												contentDB += datasetID.replace(/^\s+|\s+$/g, '') +"";
+/*												if (document.getElementById("contentDB").checked == true){
+													contentDB += "y-"
+												} else {
+													contentDB += "n-"
+												}
+												if (document.getElementById("specific").checked == true){
+													var datasetID ="{% for i in param.containers.Dataset_ID %} {{ i }} {% endfor %}";
+													contentDB += datasetID.replace(/^\s+|\s+$/g, '') +"";
+												} else {
+													contentDB += "0";
+												}*/
+												
+												url_str += "/" + contentDB;
+												
+												// the following two lines assume that this "feat_falcon_config.html" page will be shown in "div#content_details" part of the containers.html
+												$("div#content_details").html('<p>Calculating data... please wait <img src ="{% url webstatic "images/spinner.gif" %}"/></p>');
+												$("div#content_details").load('/searcher/featureCalculation/' + url_str +'/');
+		                    return false;
+		            });
+        })
+    </script>
+
+{% endblock %}
+
+
+{% block left %}
+<style type="text/css">
+table.bk_table {
+	border-width: 2px;
+	border-spacing: ;
+	border-style: solid none solid;;
+	border-color: gray;
+	border-collapse: separate;
+	background-color: white;
+}
+table.bk_table th {
+	text-align: center;
+	border-width: 1px;
+	border-style: none none outset;;
+	background-color: white;
+	-moz-border-radius: ;
+}
+table.bk_table td {
+	text-align: center;
+	background-color: white;
+	-moz-border-radius: ;
+}
+</style>
+
+<div id="configuration">
+
+		<div class="clear"></div>
+		{% if param.containers.Obj_Type %}
+		<fieldset>
+		<div>
+			<h1> {% trans "Feature Calculation Configuration" %} </h1>
+		</div>
+		</fieldset>
+		<fieldset>
+			<div>
+				<table class="bk_table">
+					<thead> 
+	          <tr> 
+	              <th width=50%>{% trans "Type" %}</th> 
+	              <th width=50%>{% trans "ID" %}</th> 
+	          </tr> 
+	        </thead>
+	        <tbody>
+				   			<tr>
+									 <td width=50% >
+									 		{% for i in param.containers.Obj_Type %} {{ i }} {% endfor %}
+									 </td>
+									 <td width=50% >
+											{% for i in param.containers.Obj_ID %} {{ i }} {% endfor %}
+									 </td>
+								</tr>
+			   	</tbody>
+		    </table>
+			</div>
+		  <div>
+		      <h2>{% trans "Select Feature Set" %}</h2>
+		      <div>
+		      	<p>
+			      	<select name="FeatureSet">
+			      		<script type="text/javascript">
+			      			var txt="";
+			      			for(var i=0;i<featsets.length;i=i+1){
+			      				txt+='<option value="'+featsets[i].toString()+'">'+featsets[i].toString()+'</option>';
+			      			}
+			      			document.write(txt);
+			      		</script>
+				    	</select>
+				    </p>
+			  	</div>
+		  </div>
+<!--		  <div>
+		      <h2>{% trans "Check for content DB update" %}</h2>
+		      <div>
+		      	<p>
+		      		<form>
+								<input type="checkbox" id="contentDB" value="entire" />Update entire content DB<br />
+								<input type="checkbox" id="specific" value="dataset" />Update a content DB for dataset {% for i in param.containers.Dataset_ID %} {{ i }} {% endfor %}<br />
+							</form> 
+				    </p>
+			  	</div>
+		  </div>-->
+		  
+		  
+		  
+		</fieldset>
+    <fieldset>
+	    <div>
+	    	<h1>{% trans "Run Feature Calculation" %}</h1>
+				<div id="feat_calc_button_div" class="toolbar_noborder">
+					<p>
+						<form id="button_form">
+							<!-- <a href="/webclient/relevance/?iIds={% for c in basket.imageInBasket %}{{ c.id }}{% if not forloop.last %},{% endif %}{% endfor %}">Search by image content</a>  -->
+							<input id="feat_calc_button" type="button" value="Run it" style="background-color:lightgreen"/> 
+						</form>
+					</p>
+				</div>
+	  	</div>
+	  </fieldset>
+  
+		{% else %}
+    <p>{% trans "No data." %}</p>
+		{% endif %}
+</div>
+{% endblock %}
+
+
+{% block center %}
+	<div id="content_details"> 
+		<h1> Ready </h1>
+	</div>
+{% endblock %}
