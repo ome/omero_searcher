@@ -13,7 +13,7 @@ def extractFeatures( conn, image, scale, set ):
     imageId = image.getId()
 
     [fids, features, scale ] = pyslid.features.calculate( conn, imageId, 
-       scale, set, True, None, 0, [0] )    
+       scale, set, True, None, 0, [0], debug=True )
 
     if features is None:
       return message + 'Failed Image id:%d\n' % imageId
