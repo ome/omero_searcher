@@ -79,8 +79,8 @@ def runScript():
 
         scripts.String('Feature_set', optional=False, grouping='1',
                        description='SLF set',
-                       values=[rstring('SLF33'), rstring('SLF34')],
-                       default='SLF33'),
+                       values=[rstring('slf33'), rstring('slf34')],
+                       default='slf33'),
 
         scripts.String(
             'Scale', optional=False, grouping='2',
