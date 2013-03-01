@@ -31,7 +31,7 @@ def processImages(client, scriptParams):
     dataType = scriptParams['Data_Type']
     ids = scriptParams['IDs']
     set = scriptParams['Feature_set']
-    scale = scriptParams['Scale']
+    scale = float(scriptParams['Scale'])
 
     try:
         nimages = 0
@@ -82,10 +82,10 @@ def runScript():
                        values=[rstring('SLF33'), rstring('SLF34')],
                        default='SLF33'),
 
-        scripts.Double(
+        scripts.String(
             'Scale', optional=False, grouping='2',
-            description='Scale.',
-            default=1),
+            description='Scale',
+            default=rstring('0.1')),
 
         version = '0.0.1',
         authors = ['Ivan E. Cao-Berg', 'Lane Center for Comp Bio'],
