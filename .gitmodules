@@ -1,0 +1,6 @@
+[submodule "ricerca"]
+	path = ricerca
+	url = git@bitbucket.org:icaoberg/ricerca.git
+[submodule "pyslid"]
+	path = pyslid
+	url = git@bitbucket.org:icaoberg/pyslid.git
