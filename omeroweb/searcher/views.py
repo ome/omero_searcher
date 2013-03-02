@@ -9,290 +9,30 @@
 # Version: 1.0
 #
 
-import sys
-import copy
-import re
-import os
-import calendar
-import cStringIO
-import datetime
-import httplib
-import Ice
-import locale
 import logging
-import traceback
 
-import shutil
-import zipfile
-import glob
-
-from time import time
-from thread import start_new_thread
-
-from omero_version import omero_version
-import omero, omero.scripts 
-from omero.rtypes import *
-
-from django.conf import settings
-from django.contrib.sessions.backends.cache import SessionStore
-from django.core import template_loader
-from django.core.cache import cache
-from django.http import HttpResponse, HttpResponseRedirect, HttpResponseServerError
-from django.shortcuts import render_to_response
-from django.template import RequestContext as Context
-from django.utils import simplejson
-from django.views.defaults import page_not_found, server_error
-from django.views import debug
-from django.core.urlresolvers import reverse
-from django.utils.translation import ugettext_lazy as _
-from django.utils.encoding import smart_str
-from django.core.servers.basehttp import FileWrapper
-
+from omeroweb.webclient.decorators import login_required, render_response
 from webclient.webclient_gateway import OmeroWebGateway
-from omeroweb.webclient.webclient_utils import string_to_dict
-
-##from webclient_http import HttpJavascriptRedirect, HttpJavascriptResponse, HttpLoginRedirect
-
-##from webclient_utils import _formatReport, _purgeCallback
-from webclient.forms import ShareForm, BasketShareForm, ShareCommentForm, \
-                    ContainerForm, ContainerNameForm, ContainerDescriptionForm, \
-                    CommentAnnotationForm, TagAnnotationForm, \
-                    UploadFileForm, UsersForm, ActiveGroupForm, HistoryTypeForm, \
-                    MetadataFilterForm, MetadataDetectorForm, MetadataChannelForm, \
-                    MetadataEnvironmentForm, MetadataObjectiveForm, MetadataObjectiveSettingsForm, MetadataStageLabelForm, \
-                    MetadataLightSourceForm, MetadataDichroicForm, MetadataMicroscopeForm, \
-                    TagListForm, FileListForm, TagFilterForm, \
-                    MultiAnnotationForm, \
-                    WellIndexForm
-
-from webclient.controller import BaseController
-##from controller.index import BaseIndex
-from webclient.controller.basket import BaseBasket
-##from controller.container import BaseContainer
-##from controller.help import BaseHelp
-##from controller.history import BaseCalendar
-##from controller.impexp import BaseImpexp
-##from controller.search import BaseSearch
-##from controller.share import BaseShare
-##
-##from omeroweb.webadmin.forms import MyAccountForm, UploadPhotoForm, LoginForm, ChangePassword
-##from omeroweb.webadmin.controller.experimenter import BaseExperimenter 
-##from omeroweb.webadmin.controller.uploadfile import BaseUploadFile
-##from omeroweb.webadmin.webadmin_utils import _checkVersion, _isServerOn, toBoolean, upgradeCheck
-
-from omeroweb.webgateway.views import getBlitzConnection
-from omeroweb.webgateway import views as webgateway_views
-
-from omeroweb.feedback.views import handlerInternalError
-from omeroweb.webclient.webclient_http import HttpJavascriptRedirect, HttpJavascriptResponse, HttpLoginRedirect
 
 
-
-
-import settings
-
-
-connectors = {}
-share_connectors = {}
-
+# import featuresetInfo     # TODO import currently failing
 
 logger = logging.getLogger('searcher')
 
-def index (request):
-    conn = getBlitzConnection (request, useragent="OMERO.searcher")
-#    if conn is None or not conn.isConnected():
-#        return HttpResponseRedirect(reverse('searcher_login'))
 
-    return render_to_response('searcher/index.html', {'client': conn})
-
-
-################################################################################
-# Blitz Gateway Connection
-
-def getShareConnection (request, share_id):
-    browsersession_key = request.session.session_key
-    share_conn_key = "S:%s#%s#%s" % (browsersession_key, request.session.get('server'), share_id)
-    share = getBlitzConnection(request, force_key=share_conn_key, useragent="OMERO.web")
-    share.attachToShare(share_id)
-    request.session['shares'][share_id] = share._sessionUuid
-    request.session.modified = True    
-    logger.debug('shared connection: %s : %s' % (share_id, share._sessionUuid))
-    return share
-
-################################################################################
-# decorators
-
-def _session_logout (request, server_id):
-    webgateway_views._session_logout(request, server_id)
-
-    try:
-        if request.session.get('shares') is not None:
-            for key in request.session.get('shares').iterkeys():
-                session_key = "S:%s#%s#%s" % (request.session.session_key,server_id, key)
-                webgateway_views._session_logout(request,server_id, force_key=session_key)
-        for k in request.session.keys():
-            if request.session.has_key(k):
-                del request.session[k]
-    except:
-        logger.error(traceback.format_exc())
+@login_required()
+@render_response()
+def index (request, conn=None, **kwargs):
+    
+    return {'template': 'searcher/index.html'}
 
 
-def isUserConnected (f):
-    def wrapped (request, *args, **kwargs):
-        #this check the connection exist, if not it will redirect to login page
-        server = string_to_dict(request.REQUEST.get('path')).get('server',request.REQUEST.get('server', None))
-        url = request.REQUEST.get('url')
-        if url is None or len(url) == 0:
-            if request.META.get('QUERY_STRING'):
-                url = '%s?%s' % (request.META.get('PATH_INFO'), request.META.get('QUERY_STRING'))
-            else:
-                url = '%s' % (request.META.get('PATH_INFO'))
-        
-        conn = None
-        try:
-            conn = getBlitzConnection(request, useragent="OMERO.web")
-        except Exception, x:
-            logger.error(traceback.format_exc())
-        
-        if conn is None:
-            # TODO: Should be changed to use HttpRequest.is_ajax()
-            # http://docs.djangoproject.com/en/dev/ref/request-response/
-            # Thu  6 Jan 2011 09:57:27 GMT -- callan at blackcat dot ca
-            if request.is_ajax():
-                return HttpResponseServerError(reverse("weblogin"))
-            _session_logout(request, request.REQUEST.get('server', None))
-            if server is not None:
-                return HttpLoginRedirect(reverse("weblogin")+(("?url=%s&server=%s") % (url,server)))
-            return HttpLoginRedirect(reverse("weblogin")+(("?url=%s") % url))
-        
-        conn_share = None
-        share_id = kwargs.get('share_id', None)
-        if share_id is not None:
-            sh = conn.getShare(share_id)
-            if sh is not None:
-                try:
-                    if sh.getOwner().id != conn.getEventContext().userId:
-                        conn_share = getShareConnection(request, share_id)
-                except Exception, x:
-                    logger.error(traceback.format_exc())
-        
-        sessionHelper(request)
-        kwargs["error"] = request.REQUEST.get('error')
-        kwargs["conn"] = conn
-        kwargs["conn_share"] = conn_share
-        kwargs["url"] = url
-        return f(request, *args, **kwargs)
-    return wrapped
 
-def sessionHelper(request):
-    changes = False
-    if request.session.get('callback') is None:
-        request.session['callback'] = dict()
-        changes = True
-    if request.session.get('shares') is None:
-        request.session['shares'] = dict()
-        changes = True
-    if request.session.get('imageInBasket') is None:
-        request.session['imageInBasket'] = set()
-        changes = True
-    #if request.session.get('datasetInBasket') is None:
-    #    request.session['datasetInBasket'] = set()
-    if request.session.get('nav') is None:
-        if request.session.get('server') is not None:
-            blitz = settings.SERVER_LIST.get(pk=request.session.get('server'))
-        elif request.session.get('host') is not None:
-            blitz = settings.SERVER_LIST.get(host=request.session.get('host'))
-        blitz = "%s:%s" % (blitz.host, blitz.port)
-        request.session['nav']={"blitz": blitz, "menu": "mydata", "view": "tree", "basket": 0, "experimenter":None}
-        changes = True
-    if changes:
-        request.session.modified = True
-            
-        
 ################################################################################
 # views controll
 ###########################################################################
-@isUserConnected
-def load_template(request, menu, **kwargs):
-    request.session.modified = True
-        
-    if menu == 'userdata':
-        template = "webclient/data/containers.html"
-    elif menu == 'usertags':
-        template = "webclient/data/container_tags.html"
-    else:
-        template = "webclient/%s/%s.html" % (menu,menu)
-    request.session['nav']['menu'] = menu
-    
-    request.session['nav']['error'] = request.REQUEST.get('error')
-    
-    conn = None
-    try:
-        conn = kwargs["conn"]
-    except:
-        logger.error(traceback.format_exc())
-        return handlerInternalError("Connection is not available. Please contact your administrator.")
-    
-    url = None
-    try:
-        url = kwargs["url"]
-    except:
-        logger.error(traceback.format_exc())
-    if url is None:
-        url = reverse(viewname="load_template", args=[menu])
-    
-    #tree support
-    init = {'initially_open':[], 'initially_select': None}
-    for k,v in string_to_dict(request.REQUEST.get('path')).items():
-        if k.lower() in ('project', 'dataset', 'image', 'screen', 'plate'):
-            for i in v.split(","):
-                if ":selected" in str(i) and init['initially_select'] is None:
-                    init['initially_select'] = k+"-"+i.replace(":selected", "")
-                else:
-                    init['initially_open'].append(k+"-"+i)
-                
-    try:
-        manager = BaseContainer(conn)
-    except AttributeError, x:
-        logger.error(traceback.format_exc())
-        return handlerInternalError(x)
-    
-    form_users = None
-    filter_user_id = None
-    
-    users = list(conn.listColleagues())
-    users.sort(key=lambda x: x.getOmeName().lower())
-    empty_label = "*%s (%s)" % (conn.getUser().getFullName(), conn.getUser().omeName)
-    if len(users) > 0:
-        if request.REQUEST.get('experimenter') is not None and len(request.REQUEST.get('experimenter'))>0: 
-            form_users = UsersForm(initial={'users': users, 'empty_label':empty_label, 'menu':menu}, data=request.REQUEST.copy())
-            if form_users.is_valid():
-                filter_user_id = request.REQUEST.get('experimenter', None)
-                request.session.get('nav')['experimenter'] = filter_user_id
-                form_users = UsersForm(initial={'user':filter_user_id, 'users': users, 'empty_label':empty_label, 'menu':menu})
-        else:
-            if request.REQUEST.get('experimenter') == "":
-                request.session.get('nav')['experimenter'] = None
-            filter_user_id = request.session.get('nav')['experimenter'] is not None and request.session.get('nav')['experimenter'] or None
-            if filter_user_id is not None:
-                form_users = UsersForm(initial={'user':filter_user_id, 'users': users, 'empty_label':empty_label, 'menu':menu})
-            else:
-                form_users = UsersForm(initial={'users': users, 'empty_label':empty_label, 'menu':menu})
-            
-    else:
-        form_users = UsersForm(initial={'users': users, 'empty_label':empty_label, 'menu':menu})
-            
-    form_active_group = ActiveGroupForm(initial={'activeGroup':manager.eContext['context'].groupId, 'mygroups': manager.eContext['allGroups'], 'url':url})
-    
-    context = {'nav':request.session['nav'], 'url':url, 'init':init, 'eContext':manager.eContext, 'form_active_group':form_active_group, 'form_users':form_users}
-    
-    t = template_loader.get_template(template)
-    c = Context(request,context)
-    logger.debug('TEMPLATE: '+template)
-    return HttpResponse(t.render(c))
 
-import featuresetInfo
-@isUserConnected   
+@login_required()
 def select_czt( request, ImageID = None, **kwargs):
     # get connection
     conn = None
@@ -322,16 +62,9 @@ def select_czt( request, ImageID = None, **kwargs):
 
 
 
-import omeroweb.searcher.searchContent as searchContent
-@isUserConnected   
-def contentsearch( request, iIds, dId = None, fset = None, numret = None, negId = None, **kwargs):
-    # get connection
-    conn = None
-    try:
-        conn = kwargs["conn"]        
-    except:
-        logger.error(traceback.format_exc())
-        return handlerInternalError("Connection is not available. Please contact your administrator.")
+# import omeroweb.searcher.searchContent as searchContent   TODO: import currently failing
+@login_required()
+def contentsearch( request, iIds, dId = None, fset = None, numret = None, negId = None, conn=None, **kwargs):
 
     server_name=request.META['SERVER_NAME']
     owner=request.session['username']
@@ -510,15 +243,8 @@ def contentsearch( request, iIds, dId = None, fset = None, numret = None, negId 
         logger.error(traceback.format_exc())
         return None
 
-@isUserConnected    
-def featureCalculationConfig( request, object_type = None, object_ID = None, **kwargs):
-    # get connection
-    conn = None
-    try:
-        conn = kwargs["conn"]        
-    except:
-        logger.error(traceback.format_exc())
-        return handlerInternalError("Connection is not available. Please contact your administrator.")
+@login_required()
+def featureCalculationConfig( request, object_type = None, object_ID = None, conn=None, **kwargs):
 
     ## for visualizing the results in the template html file from here
     objecttype = []
@@ -570,21 +296,15 @@ def featureCalculationConfig( request, object_type = None, object_ID = None, **k
     return HttpResponse(t.render(c))
 
 
-import pyslid.features
-import pyslid.utilities
-import pyslid.database.direct
+# TODO fix imports
+#import pyslid.features
+#import pyslid.utilities
+#import pyslid.database.direct
 
 import numpy
-@isUserConnected  
-def featureCalculation( request, object_type = None, object_ID = None, featureset = None, contentDB_config = None, **kwargs):
-    # get connection
-    conn = None
-    try:
-        conn = kwargs["conn"]        
-    except:
-        logger.error(traceback.format_exc())
-        return handlerInternalError("Connection is not available. Please contact your administrator.")
 
+@login_required()
+def featureCalculation( request, object_type = None, object_ID = None, featureset = None, contentDB_config = None, conn=None, **kwargs):
 
     class RESULT:
         iid=0
