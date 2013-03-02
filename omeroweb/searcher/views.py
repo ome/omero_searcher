@@ -27,10 +27,24 @@ def index (request, conn=None, **kwargs):
     return {'template': 'searcher/index.html'}
 
 
+@login_required()
+@render_response()
+def right_plugin_search_form (request, conn=None, **kwargs):
+    """
+    This generates a search form in the right panel with the currently selected images, allowing
+    a user to initialize a content search.
+    """
+    context = {'template': 'searcher/right_plugin_search_form.html'}
 
-################################################################################
-# views controll
-###########################################################################
+    datasets = list(conn.getObjects("Dataset"))
+    datasets.sort(key=lambda x: x.getName() and x.getName().lower())
+    context['datasets'] = datasets
+
+    imageIds =  request.REQUEST.getlist('image')
+    if len(imageIds) > 0:
+        context['images'] = list( conn.getObjects("Image", imageIds) )
+    return context
+
 
 @login_required()
 def select_czt( request, ImageID = None, **kwargs):

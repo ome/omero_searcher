@@ -18,6 +18,10 @@ from omeroweb.searcher import views
 urlpatterns = patterns('django.views.generic.simple',
 
     url( r'^$', views.index, name='searcher_index' ),
+
+    # right plugin search form (equivalent to basket.html). IDs passed in query string: /?image=123&image=456 etc.
+    url( r'^right_plugin_search_form/$', views.right_plugin_search_form, name='right_plugin_search_form' ),
+
     url( r'^contentsearch/(?P<iIds>[a-zA-Z0-9\-\,\.]+)/(?:(?P<dId>[0-9]+))/(?:(?P<fset>[a-zA-Z0-9]+))/(?:(?P<numret>[0-9]+))/(?:(?P<negId>[a-zA-Z0-9\-\,\.]+)/)?$', views.contentsearch ), 
     url( r'^featureCalculationConfig/(?:(?P<object_type>[a-zA-Z0-9]+))/(?:(?P<object_ID>[0-9]+)/)?$', views.featureCalculationConfig, name="featureCalculationConfig"),  ## BK 
     url( r'^featureCalculation/(?:(?P<object_type>[a-zA-Z0-9]+))/(?:(?P<object_ID>[0-9]+))/(?:(?P<featureset>[a-zA-Z0-9]+))/(?:(?P<contentDB_config>[a-zA-Z0-9\-\,\.]+)/)?$', views.featureCalculation, name="featureCalculation"),  ## BK

@@ -1,0 +1,28 @@
+<script>
+
+$(document).ready(function() {
+
+    $("#right_search_form").omeroweb_right_plugin({
+        plugin_index: {{ forloop.counter }},        // This MUST be defined
+        load_tab_content: function(selected, obj_dtype, obj_id) {    // This MUST be defined
+            var imageIds = [];
+            for (var i=0; i<selected.length; i++) {
+                imageIds.push(selected[i]["id"].replace("-","="));
+            }
+            queryString = imageIds.join("&");
+            $(this).load('{% url right_plugin_search_form %}?' + queryString);
+        },
+        //supported_obj_types: ['image','dataset'],   // E.g. only support single image/dataset selected
+        
+        // OR provide more detailed selection criteria
+        tab_enabled: function(selected) {
+            var obj_id = selected[0]['id']; // E.g. image-123
+            var obj_type = obj_id.split('-')[0];
+            return (obj_type == "image");
+        }
+        
+    });
+    
+});
+
+</script>
