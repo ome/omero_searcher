@@ -1,0 +1,107 @@
+{% extends "webclient/search/search.html" %}
+{% load i18n %}
+
+{% block script %}
+    {{ block.super }}
+
+    <script>
+
+        $(function(){
+
+            // on initial load, do first search by submitting immediately
+            //$("#content_search").submit();
+        });
+
+    </script>
+{% endblock %}
+
+
+{% block left %}
+
+
+<div id="user_selection">
+
+{% include "webclient/base/includes/group_user_dropdown.html" %}
+    
+</div>
+
+
+<div id="searching">
+    <div class="left_panel_inner">
+
+    <h1> {% trans "Search again with additional image(s)" %}            <span id="searching_again_description" title="Search again - <small>Performs another round of search by image content. Using the previous settings (selected image(s), featureset, # retrieved images, and dataset), you can include additional images to the search query by selecting images. <br/><br/>
+            For example, if you have some images that you don't like among the current result, you can add those images as negative samples and do another round of search.</small>"><img src="{% static "webclient/images/help16.png" %}" /></span></h1>
+
+
+    <form id="content_search" class="content_search" method="POST" action="{% url searchpage %}">
+        <div>
+            <label for="featureset_Name">Featureset Name:</label> {{ fset }}
+            <input type="text" name="featureset_Name" value="{{ fset }}" style="display:none"/>
+        </div>
+
+        <div>
+            <label for="NumRetrieve">Retrieved images:</label>
+            <select name="NumRetrieve">
+                <option value="10" {% ifequal numret '10' %}selected='true'{% endifequal %}>10</option>
+                <option value="20" {% ifequal numret '20' %}selected='true'{% endifequal %}>20</option>
+                <option value="100" {% ifequal numret '100' %}selected='true'{% endifequal %}>100</option>
+                <option value="500" {% ifequal numret '500' %}selected='true'{% endifequal %}>500</option>
+            </select>
+        </div>
+
+        <div>
+            <label>Dataset:</label>
+            {% if dataset %}
+                {{ dataset.getName }}
+                <input name="dataset_ID" disabled="true" type="text" value="{{ dataset.getId }}" style="display:none"/>
+            {% else %}
+                Entire DB
+            {% endif %}
+        </div>
+
+        <input style="float:right" type="submit" value="Do Search"/> 
+
+        <div style="clear:both"></div>
+        <hr style="margin-top:0px" />
+
+        <table>
+            <thead> 
+                <tr> 
+                    <th width="10%">{% trans "Image" %}</th>
+                    <th width="10%">C.Z.T</th>
+                    <th width="30%">{% trans "Name" %}</th>
+                    <th width="10%">{% trans "Negative" %}</th>
+                    <th width="10%">{% trans "Positive" %}</th>
+                </tr> 
+            </thead>
+            <tbody>
+                {% for c in images %}
+                    <tr id="{{ c.id }}">
+                        <td class="action">
+                            <img src="{% url render_thumbnail_resize 32 c.id  %}" alt="image" title="{{c.id}}"/>
+                            <input name="allIds" style="display:none" value="{{c.id}}" type="text" />
+
+                        </td>
+                        <td>
+                            <input style="display:none" type="text" name="czt-{{ c.id }}" value="0.0.0" size="3"></input>
+                            <span id="czt-{{ c.id }}">0.0.0</span>
+                        </td>
+                        <td>{{ c.name }}</td>
+                        <td align="center">
+                            <input type="radio" name="posNeg-{{ c.id }}" value="neg">
+                        </td> 
+                        <td>
+                            <input type="radio" name="posNeg-{{ c.id }}" value="pos" checked="true">
+                        </td> 
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </form>
+
+    </div>
+
+</div>
+
+
+{% endblock %}

@@ -22,6 +22,9 @@ urlpatterns = patterns('django.views.generic.simple',
     # right plugin search form (equivalent to basket.html). IDs passed in query string: /?image=123&image=456 etc.
     url( r'^right_plugin_search_form/$', views.right_plugin_search_form, name='right_plugin_search_form' ),
 
+    # main search page - submit initial search via POST from right_plugin
+    url( r'^searchpage/$', views.searchpage, name="searchpage" ), 
+
     url( r'^contentsearch/(?P<iIds>[a-zA-Z0-9\-\,\.]+)/(?:(?P<dId>[0-9]+))/(?:(?P<fset>[a-zA-Z0-9]+))/(?:(?P<numret>[0-9]+))/(?:(?P<negId>[a-zA-Z0-9\-\,\.]+)/)?$', views.contentsearch ), 
     url( r'^featureCalculationConfig/(?:(?P<object_type>[a-zA-Z0-9]+))/(?:(?P<object_ID>[0-9]+)/)?$', views.featureCalculationConfig, name="featureCalculationConfig"),  ## BK 
     url( r'^featureCalculation/(?:(?P<object_type>[a-zA-Z0-9]+))/(?:(?P<object_ID>[0-9]+))/(?:(?P<featureset>[a-zA-Z0-9]+))/(?:(?P<contentDB_config>[a-zA-Z0-9\-\,\.]+)/)?$', views.featureCalculation, name="featureCalculation"),  ## BK

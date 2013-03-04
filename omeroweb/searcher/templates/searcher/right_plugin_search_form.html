@@ -63,9 +63,9 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
 
     <h1>Image Content Search</h1>
 
-    <form class="content_search" method="POST">
+    <form class="content_search" method="POST" action="{% url searchpage %}">
         <div>
-            <label for="featureset_Name">Featureset:</label>
+            <label for="featureset_Name">Featureset Name:</label>
             <select id="featureset" name="featureset_Name">
                 <option value="slf33">slf33</option>
                 <option value="slf34">slf34</option>

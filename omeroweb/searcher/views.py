@@ -47,6 +47,37 @@ def right_plugin_search_form (request, conn=None, **kwargs):
 
 
 @login_required()
+@render_response()
+def searchpage( request, iIds=None, dId = None, fset = None, numret = None, negId = None, conn=None, **kwargs):
+    """
+    The main OMERO.searcher page. We arrive here with an initial search from the right_plugin_search_form above.
+    This shows a new search form in the left panel and loads results in the center (see contentsearch below).
+    Subsequent searches from the left panel simply refresh the center results pane.
+    """
+
+    context = {'template': 'searcher/contentsearch/searchpage.html'}
+
+    iIds = request.POST.getlist("allIds")
+    imageIds = [int(i) for i in iIds]
+    context["images"] = conn.getObjects("Image", imageIds)
+    dId = request.POST.get("dataset_ID", None)
+    if dId is not None:
+        context['dataset'] = conn.getObject("Dataset", dId)
+    context['fset'] = request.POST.get("featureset_Name")
+    context['numret'] = request.POST.get("NumRetrieve")
+
+    # TODO: pass these other parameters to context too!
+    negId = []
+    czts = []
+    for i in iIds:
+        if request.POST.get("posNeg-%s" % i) == "neg":
+            negId.append(i)
+        czts.append(request.POST.get("czt-%s" % i))
+
+    return context
+
+
+@login_required()
 def select_czt( request, ImageID = None, **kwargs):
     # get connection
     conn = None
