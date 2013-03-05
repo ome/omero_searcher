@@ -13,6 +13,29 @@
         });
 
     </script>
+
+    <style type="text/css">
+        table.bk_table {
+            border-width: 2px;
+            border-spacing: ;
+            border-style: solid none solid;;
+            border-color: gray;
+            border-collapse: separate;
+        }
+        table.bk_table th {
+            text-align: center;
+            border-width: 1px;
+            border-style: none none outset;
+            -moz-border-radius: ;
+        }
+        table.bk_table td {
+            text-align: center;
+            -moz-border-radius: ;
+        }
+        .content_search>div {
+            padding: 4px 0;
+        }
+    </style>
 {% endblock %}
 
 
@@ -34,9 +57,31 @@
 
 
     <form id="content_search" class="content_search" method="POST" action="{% url searchpage %}">
+
         <div>
-            <label for="featureset_Name">Featureset Name:</label> {{ fset }}
-            <input type="text" name="featureset_Name" value="{{ fset }}" style="display:none"/>
+            <table class="bk_table">
+                <thead> 
+                    <tr> 
+                        <th width=50%>{% trans "Featureset name" %}</th> 
+                        <th width=50%>{% trans "Dataset" %}</th> 
+                    </tr> 
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            {{ fset }}
+                        </td>
+                        <td>
+                            {% if dataset %}
+                                {{ dataset.getId }}: {{ dataset.getName }}
+                                <input name="dataset_ID" disabled="true" type="text" value="{{ dataset.getId }}" style="display:none"/>
+                            {% else %}
+                                Entire DB
+                            {% endif %}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
 
         <div>
@@ -49,20 +94,10 @@
             </select>
         </div>
 
-        <div>
-            <label>Dataset:</label>
-            {% if dataset %}
-                {{ dataset.getName }}
-                <input name="dataset_ID" disabled="true" type="text" value="{{ dataset.getId }}" style="display:none"/>
-            {% else %}
-                Entire DB
-            {% endif %}
-        </div>
-
         <input style="float:right" type="submit" value="Do Search"/> 
 
-        <div style="clear:both"></div>
-        <hr style="margin-top:0px" />
+        <div style="clear:both; padding:0px"></div>
+        <hr/>
 
         <table>
             <thead> 
