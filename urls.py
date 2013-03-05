@@ -13,7 +13,7 @@ import os.path
 from django.conf.urls.defaults import *
 from django.views.static import serve
 
-from omeroweb.searcher import views
+from omeroweb.omero_searcher import views
 
 urlpatterns = patterns('django.views.generic.simple',
 
