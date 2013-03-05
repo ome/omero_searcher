@@ -35,6 +35,15 @@
         .content_search>div {
             padding: 4px 0;
         }
+        .content_search td {
+            vertical-align: middle;
+            padding: 5px 0px;
+        }
+        .content_search th {
+            color: #444C54;
+            font-weight: bold;
+            text-align: left;
+        }
     </style>
 {% endblock %}
 
@@ -105,8 +114,7 @@
                     <th width="10%">{% trans "Image" %}</th>
                     <th width="10%">C.Z.T</th>
                     <th width="30%">{% trans "Name" %}</th>
-                    <th width="10%">{% trans "Negative" %}</th>
-                    <th width="10%">{% trans "Positive" %}</th>
+                    <th width="10%">{% trans "Type" %}</th>
                 </tr> 
             </thead>
             <tbody>
@@ -118,15 +126,15 @@
 
                         </td>
                         <td>
-                            <input style="display:none" type="text" name="czt-{{ c.id }}" value="0.0.0" size="3"></input>
+                            <input style="display:none" type="text" name="czt-{{ c.id }}" value="{{ c.czt }}" size="3"></input>
                             <span id="czt-{{ c.id }}">0.0.0</span>
                         </td>
                         <td>{{ c.name }}</td>
                         <td align="center">
-                            <input type="radio" name="posNeg-{{ c.id }}" value="neg">
-                        </td> 
-                        <td>
-                            <input type="radio" name="posNeg-{{ c.id }}" value="pos" checked="true">
+                            <!-- hidden input for form submission -->
+                            <input name="posNeg-{{ c.id }}" style="display:none"
+                                value="{% if c.posNeg %}pos{% else %}neg{% endif %}" />
+                            {% if c.posNeg %}+{% else %}-{% endif %}
                         </td> 
                     </tr>
                 {% endfor %}

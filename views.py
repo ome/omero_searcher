@@ -57,22 +57,23 @@ def searchpage( request, iIds=None, dId = None, fset = None, numret = None, negI
 
     context = {'template': 'searcher/contentsearch/searchpage.html'}
 
-    iIds = request.POST.getlist("allIds")
-    imageIds = [int(i) for i in iIds]
-    context["images"] = conn.getObjects("Image", imageIds)
     dId = request.POST.get("dataset_ID", None)
     if dId is not None:
         context['dataset'] = conn.getObject("Dataset", dId)
     context['fset'] = request.POST.get("featureset_Name")
     context['numret'] = request.POST.get("NumRetrieve")
 
-    # TODO: pass these other parameters to context too!
-    negId = []
-    czts = []
-    for i in iIds:
-        if request.POST.get("posNeg-%s" % i) == "neg":
-            negId.append(i)
-        czts.append(request.POST.get("czt-%s" % i))
+    iIds = request.POST.getlist("allIds")
+    imageIds = [int(i) for i in iIds]
+    images = []
+    for i in conn.getObjects("Image", imageIds):
+        posNeg = request.POST.get("posNeg-%s" % i.id) == "pos"
+        czt = request.POST.get("czt-%s" % i.id)
+        images.append({'name':i.getName(),
+            'id':i.getId(),
+            'posNeg': posNeg,
+            'czt': czt})
+    context['images'] = images
 
     return context
 
