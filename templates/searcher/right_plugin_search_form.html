@@ -1,6 +1,6 @@
 
 {% load i18n %}
-{% load markup %}
+{% load common_filters %}
 
 {% comment %}
 <!--
@@ -45,7 +45,25 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
             } else {
                 $dataset_ID.attr('disabled', 'true');
             }
-        })
+        });
+
+        $(".cztEdit").click(function() {
+            $(".cztSelects", $(this).parent()).toggle();
+        });
+
+        $(".cztSelects select").change(function(){
+            var $this = $(this),
+                $td = $this.parent().parent(),
+                $input = $("input", $td),    // form submission
+                $span = $("span", $td),      // display
+                idxs = [];
+            $('select', $this.parent()).each(function(){
+                idxs.push( $(this).val() );
+            });
+            var czt = idxs.join(".");
+            $input.val(czt);
+            $span.text(czt);
+        });
     });    
 </script>
 
@@ -55,6 +73,15 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
     }
     .content_search td {
         vertical-align:middle;
+    }
+    .cztEdit:hover {
+        text-decoration: underline;
+        cursor: pointer;
+    }
+    .cztSelects {
+        white-space: nowrap;
+        position: absolute;
+        top: 10px;
     }
 
 </style>
@@ -127,8 +154,27 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
 
                         </td>
                         <td>
-                            <input style="display:none" type="text" name="czt-{{ c.id }}" value="0.0.0" size="3"></input>
-                            <span id="czt-{{ c.id }}">0.0.0</span>
+                            <div style="position:relative">
+                                <input style="display:none" type="text" name="czt-{{ c.id }}" value="0.0.0" size="3"></input>
+                                <span class="cztEdit" title="Edit Channel/Z/T">0.0.0</span>
+                                <div class="cztSelects" style="display:none">
+                                    <select title="Choose C index">
+                                        {% for i in c.getSizeC|get_range %}
+                                            <option value="{{ i }}">{{ i }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <select title="Choose Z index">
+                                        {% for i in c.getSizeZ|get_range %}
+                                            <option value="{{ i }}">{{ i }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <select title="Choose T index">
+                                        {% for i in c.getSizeT|get_range %}
+                                            <option value="{{ i }}">{{ i }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
                         </td>
                         <td>{{ c.name }}</td>
                         <td align="center">
