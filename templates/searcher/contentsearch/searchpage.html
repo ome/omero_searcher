@@ -78,12 +78,13 @@
                 <tbody>
                     <tr>
                         <td>
+                            <input name="featureset_Name" value="{{ fset }}" style="display:none"/>
                             {{ fset }}
                         </td>
                         <td>
                             {% if dataset %}
                                 {{ dataset.getId }}: {{ dataset.getName }}
-                                <input name="dataset_ID" disabled="true" type="text" value="{{ dataset.getId }}" style="display:none"/>
+                                <input name="dataset_ID" value="{{ dataset.getId }}" style="display:none"/>
                             {% else %}
                                 Entire DB
                             {% endif %}
