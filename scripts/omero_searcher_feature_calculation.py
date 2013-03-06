@@ -3,6 +3,7 @@ from omero.util import script_utils
 import omero.model
 from omero.rtypes import rstring, rlong
 from datetime import datetime
+import itertools
 import pyslid
 
 import sys, os
@@ -38,20 +39,33 @@ def processImages(client, scriptParams):
 
         conn = omero.gateway.BlitzGateway(client_obj=client)
 
-        # Get the datasets
-        datasets, logMessage = script_utils.getObjects(conn, scriptParams)
+        # Get the objects
+        objects, logMessage = script_utils.getObjects(conn, scriptParams)
         message += logMessage
 
-        if not datasets:
+        if not objects:
             return message
 
-        for d in datasets:
-            message += 'Processing dataset id:%d\n' % d.getId()
-            for image in d.listChildren():
+        if dataType == 'Image':
+            for image in objects:
                 message += 'Processing image id:%d\n' % image.getId()
                 msg = extractFeatures( conn, image, scale, set )
                 
                 message += msg + '\n'
+
+        else:
+            if dataType == 'Project':
+                datasets = [proj.listChildren() for proj in objects]
+                datasets = itertools.chain.from_iterable(datasets)
+            else:
+                datasets = objects
+
+            for d in datasets:
+                message += 'Processing dataset id:%d\n' % d.getId()
+                for image in d.listChildren():
+                    message += 'Processing image id:%d\n' % image.getId()
+                    msg = extractFeatures( conn, image, scale, set )
+                    message += msg + '\n'
 
     except:
         print message
