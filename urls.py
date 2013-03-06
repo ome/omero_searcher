@@ -25,9 +25,8 @@ urlpatterns = patterns('django.views.generic.simple',
     # main search page - submit initial search via POST from right_plugin
     url( r'^searchpage/$', views.searchpage, name="searchpage" ), 
 
-    url( r'^contentsearch/(?P<iIds>[a-zA-Z0-9\-\,\.]+)/(?:(?P<dId>[0-9]+))/(?:(?P<fset>[a-zA-Z0-9]+))/(?:(?P<numret>[0-9]+))/(?:(?P<negId>[a-zA-Z0-9\-\,\.]+)/)?$', views.contentsearch ), 
+    url( r'^contentsearch/$', views.contentsearch, name="contentsearch"), 
     url( r'^featureCalculationConfig/(?:(?P<object_type>[a-zA-Z0-9]+))/(?:(?P<object_ID>[0-9]+)/)?$', views.featureCalculationConfig, name="featureCalculationConfig"),  ## BK 
     url( r'^featureCalculation/(?:(?P<object_type>[a-zA-Z0-9]+))/(?:(?P<object_ID>[0-9]+))/(?:(?P<featureset>[a-zA-Z0-9]+))/(?:(?P<contentDB_config>[a-zA-Z0-9\-\,\.]+)/)?$', views.featureCalculation, name="featureCalculation"),  ## BK
-    url( r'^select_czt/(?:(?P<ImageID>[0-9]+))/?$', views.select_czt ),  
 ##    url( r'^getSearchContentDBfromRemoteServer/?$', views.getSearchContentDBfromRemoteServer, name="getSearchContentDBfromRemoteServer"),  ## BK                       
 )

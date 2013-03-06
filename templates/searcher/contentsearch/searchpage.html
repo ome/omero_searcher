@@ -8,8 +8,15 @@
 
         $(function(){
 
-            // on initial load, do first search by submitting immediately
-            //$("#content_search").submit();
+            $("#content_search").ajaxForm({
+                beforeSubmit: function(data) {
+                    // TODO: pick selected images from center panel and add to left form.
+                },
+                success: function(html) {
+                    $("#content_details").html(html);
+                },
+            })
+            .submit();  // on initial load, do first search by submitting immediately
         });
 
     </script>
@@ -65,7 +72,7 @@
             For example, if you have some images that you don't like among the current result, you can add those images as negative samples and do another round of search.</small>"><img src="{% static "webclient/images/help16.png" %}" /></span></h1>
 
 
-    <form id="content_search" class="content_search" method="POST" action="{% url searchpage %}">
+    <form id="content_search" class="content_search" method="POST" action="{% url contentsearch %}">
 
         <div>
             <table class="bk_table">
@@ -120,7 +127,7 @@
             </thead>
             <tbody>
                 {% for c in images %}
-                    <tr id="{{ c.id }}">
+                    <tr>
                         <td class="action">
                             <img src="{% url render_thumbnail_resize 32 c.id  %}" alt="image" title="{{c.id}}"/>
                             <input name="allIds" style="display:none" value="{{c.id}}" type="text" />

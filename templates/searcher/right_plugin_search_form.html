@@ -147,7 +147,7 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
             </thead>
             <tbody>
                 {% for c in images %}
-                    <tr id="{{ c.id }}">
+                    <tr>
                         <td class="action">
                             <img src="{% url render_thumbnail_resize 32 c.id  %}" alt="image" title="{{c.id}}"/>
                             <input name="allIds" style="display:none" value="{{c.id}}" type="text" />
@@ -180,7 +180,7 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
                         <td align="center">
                             <input type="radio" name="posNeg-{{ c.id }}" value="neg">
                         </td> 
-                        <td>
+                        <td align="center">
                             <input type="radio" name="posNeg-{{ c.id }}" value="pos" checked="true">
                         </td> 
                     </tr>
