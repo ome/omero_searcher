@@ -8,10 +8,27 @@
 
         $(function(){
 
+            // When the user clicks "Do Search", we update the form with images
+            // chosen from central panel. Then submit the form.
+            $("#doSearch").click(function(){
+                var $searchImagesTable = $("#searchImages"),
+                    $tbody = $("<tbody>");
+                // TODO: pick selected images from center panel and add to left form.
+                $("#content_details").find("input[type=radio]:checked").each(function(){
+                    var $this = $(this),
+                        $tr = $this.parent().parent(),
+                        type = $this.attr("value") == "pos" ? "+" : "-";
+                    $tr.find("input[type=radio]").hide();   // Hide posNeg radio buttons
+                    $tr.find(".posNegType").text(type).show();
+                    $("td:last", $tr).hide();
+                    $tbody.append($tr);
+                });
+                $searchImagesTable.prepend($tbody);
+                $("#content_search").submit();
+            });
+
+            // Form ajax handling - load results to central panel.
             $("#content_search").ajaxForm({
-                beforeSubmit: function(data) {
-                    // TODO: pick selected images from center panel and add to left form.
-                },
                 success: function(html) {
                     $("#content_details").html(html);
                 },
@@ -111,12 +128,12 @@
             </select>
         </div>
 
-        <input style="float:right" type="submit" value="Do Search"/> 
+        <input style="float:right" id="doSearch" type="button" value="Do Search"/> 
 
         <div style="clear:both; padding:0px"></div>
         <hr/>
 
-        <table>
+        <table id="searchImages">
             <thead> 
                 <tr> 
                     <th width="10%">{% trans "Image" %}</th>

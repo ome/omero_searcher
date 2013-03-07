@@ -34,6 +34,8 @@
                         <td>{{ c.name }}</td>
                         <td align="center">
                             <input type="radio" name="posNeg-{{ c.id }}" value="neg">
+                            <!-- 'type' span shown when we move row to left panel -->
+                            <span class="posNegType" style="display:none">+</span>
                         </td> 
                         <td align="center">
                             <input type="radio" name="posNeg-{{ c.id }}" value="pos">
