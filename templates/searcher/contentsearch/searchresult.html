@@ -1,0 +1,49 @@
+{% extends "webclient/search/search_details.html" %}
+{% load i18n %}
+{% load common_filters %}
+
+{% block search_results %}
+
+        <!-- from search_details.html -->
+    <div>
+
+        <table id="dataTable" class="tablesorter">
+            <thead> 
+                <tr> 
+                    <th width="10%">{% trans "Image" %}</th>
+                    <th width="10%">C.Z.T</th>
+                    <th width="30%">{% trans "Name" %}</th>
+                    <th width="10%">{% trans "Negative" %}</th>
+                    <th width="10%">{% trans "Positive" %}</th>
+                </tr> 
+            </thead>
+            <tbody>
+                {% for c in images %}
+                    <tr id="image-{{ c.id }}" class="{{ c.getPermsCss }}">
+                        <td class="action">
+                            <img src="{% url render_thumbnail_resize 32 c.id  %}" alt="image" title="{{c.id}}"/>
+                            <input name="allIds" style="display:none" value="{{c.id}}" type="text" />
+
+                        </td>
+                        <td>
+                            <div style="position:relative">
+                                <input style="display:none" type="text" name="czt-{{ c.id }}" value="{{ c.czt }}" size="3"></input>
+                                <span class="cztEdit" title="Edit Channel/Z/T">{{ c.czt }}</span>
+                            </div>
+                        </td>
+                        <td>{{ c.name }}</td>
+                        <td align="center">
+                            <input type="radio" name="posNeg-{{ c.id }}" value="neg">
+                            <!-- 'type' span shown when we move row to left panel -->
+                            <span class="posNegType" style="display:none">+</span>
+                        </td> 
+                        <td align="center">
+                            <input type="radio" name="posNeg-{{ c.id }}" value="pos">
+                        </td> 
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+{% endblock %}

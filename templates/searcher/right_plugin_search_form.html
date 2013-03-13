@@ -1,0 +1,197 @@
+
+{% load i18n %}
+{% load common_filters %}
+
+{% comment %}
+<!--
+  Copyright (C) 2013 University of Dundee & Open Microscopy Environment.
+  All rights reserved.
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as
+  published by the Free Software Foundation, either version 3 of the
+  License, or (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU Affero General Public License for more details.
+
+  You should have received a copy of the GNU Affero General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-->
+{% endcomment %}
+
+{% comment %}
+<!--
+For Content-based Search functionality, 
+Murphy Lab. @CMU modified the original template file.
+Those parts that have been modified are noted as "by CMU"
+
+The latest modified Date: Dec., 2011
+Authors: Baek Hwan Cho and Robert F. Murphy @CMU
+-->
+{% endcomment %}
+
+<script type="text/javascript">
+
+    $(function(){
+        $("input[name=search_against]").click(function(){
+            var searchDataset = ($(this).val() === "dataset"),
+                $dataset_ID = $("select[name=dataset_ID]");
+            if (searchDataset) {
+                $dataset_ID.removeAttr('disabled')
+                    .focus();
+            } else {
+                $dataset_ID.attr('disabled', 'true');
+            }
+        });
+
+        $(".cztEdit").click(function() {
+            $(".cztSelects", $(this).parent()).toggle();
+        });
+
+        $(".cztSelects select").change(function(){
+            var $this = $(this),
+                $td = $this.parent().parent(),
+                $input = $("input", $td),    // form submission
+                $span = $("span", $td),      // display
+                idxs = [];
+            $('select', $this.parent()).each(function(){
+                idxs.push( $(this).val() );
+            });
+            var czt = idxs.join(".");
+            $input.val(czt);
+            $span.text(czt);
+        });
+    });    
+</script>
+
+<style type="text/css">
+    .content_search>div {
+        padding:4px 0px;
+    }
+    .content_search td {
+        vertical-align:middle;
+    }
+    .cztEdit:hover {
+        text-decoration: underline;
+        cursor: pointer;
+    }
+    .cztSelects {
+        white-space: nowrap;
+        position: absolute;
+        top: 10px;
+    }
+
+</style>
+
+<div id="content_details" class="right_tab_inner">
+
+    <h1>Image Content Search</h1>
+
+    <form class="content_search" method="POST" action="{% url searchpage %}">
+        <div>
+            <label for="featureset_Name">Featureset Name:</label>
+            <select id="featureset" name="featureset_Name">
+                <option value="slf33">slf33</option>
+                <option value="slf34">slf34</option>
+            </select>
+        </div>
+
+        <div>
+            <label for="NumRetrieve">Retrieved images:</label>
+            <select name="NumRetrieve">
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="100">100</option>
+                <option value="500">500</option>
+            </select>
+        </div>
+
+        <div>
+            <label for="search_against">Search Against:</label>
+            <div style="margin-left:20px">
+                <div style="float:left">
+                    Entire Database<input type="radio" checked='true' name="search_against" value="db"/>
+                </div>
+                <div style="float:left">
+                    Dataset<input type="radio" name="search_against" value="dataset"/><br/>
+                    <select name="dataset_ID" disabled="true">
+                        {% for d in datasets %}
+                            <option value="{{ d.getId }}">
+                                {{ d.getName }}
+                                {% if d.countChildren %} [{{ d.countChildren }}] {% endif %}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div style="clear:both"></div>
+            </div>
+        </div>
+
+        <input style="float:right" type="submit" value="Do Search"/> 
+
+        <div style="clear:both"></div>
+        <hr style="margin-top:0px" />
+
+        <table>
+            <thead> 
+                <tr> 
+                    <th width="10%">{% trans "Image" %}</th>
+                    <th width="10%">C.Z.T</th>
+                    <th width="30%">{% trans "Name" %}</th>
+                    <th width="10%">{% trans "Negative" %}</th>
+                    <th width="10%">{% trans "Positive" %}</th>
+                </tr> 
+            </thead>
+            <tbody>
+                {% for c in images %}
+                    <tr>
+                        <td class="action">
+                            <img src="{% url render_thumbnail_resize 32 c.id  %}" alt="image" title="{{c.id}}"/>
+                            <input name="allIds" style="display:none" value="{{c.id}}" type="text" />
+
+                        </td>
+                        <td>
+                            <div style="position:relative">
+                                {% with defZ=c.getDefaultZ defT=c.getDefaultT %}
+                                <input style="display:none" type="text" name="czt-{{ c.id }}" value="0.0.0" size="3"></input>
+                                <span class="cztEdit" title="Edit Channel/Z/T">0.{{ defZ }}.{{ defT }}</span>
+                                <div class="cztSelects" style="display:none">
+                                    <select title="Choose C index">
+                                        {% for i in c.getSizeC|get_range %}
+                                            <option value="{{ i }}">{{ i }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <select title="Choose Z index">
+                                        {% for i in c.getSizeZ|get_range %}
+                                            <option value="{{ i }}" {% ifequal i defZ %}selected='true'{% endifequal %}>
+                                                {{ i }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                    <select title="Choose T index">
+                                        {% for i in c.getSizeT|get_range %}
+                                            <option value="{{ i }}" {% ifequal i defT %}selected='true'{% endifequal %}>
+                                                {{ i }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                {% endwith %}
+                            </div>
+                        </td>
+                        <td>{{ c.name }}</td>
+                        <td align="center">
+                            <input type="radio" name="posNeg-{{ c.id }}" value="neg">
+                        </td> 
+                        <td align="center">
+                            <input type="radio" name="posNeg-{{ c.id }}" value="pos" checked="true">
+                        </td> 
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </form>
+</div>    

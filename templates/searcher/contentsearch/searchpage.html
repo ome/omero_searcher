@@ -1,0 +1,175 @@
+{% extends "webclient/search/search.html" %}
+{% load i18n %}
+
+{% block script %}
+    {{ block.super }}
+
+    <script>
+
+        $(function(){
+
+            // When the user clicks "Do Search", we update the form with images
+            // chosen from central panel. Then submit the form.
+            $("#doSearch").click(function(){
+                var $searchImagesTable = $("#searchImages"),
+                    $tbody = $("<tbody>");
+                // TODO: pick selected images from center panel and add to left form.
+                $("#content_details").find("input[type=radio]:checked").each(function(){
+                    var $this = $(this),
+                        $tr = $this.parent().parent(),
+                        type = $this.attr("value") == "pos" ? "+" : "-";
+                    $tr.find("input[type=radio]").hide();   // Hide posNeg radio buttons
+                    $tr.find(".posNegType").text(type).show();
+                    $("td:last", $tr).hide();
+                    $tbody.append($tr);
+                });
+                $searchImagesTable.prepend($tbody);
+                $("#content_search").submit();
+            });
+
+            // Form ajax handling - load results to central panel.
+            $("#content_search").ajaxForm({
+                success: function(html) {
+                    $("#content_details").html(html);
+                },
+            })
+            .submit();  // on initial load, do first search by submitting immediately
+        });
+
+    </script>
+
+    <style type="text/css">
+        table.bk_table {
+            border-width: 2px;
+            border-spacing: ;
+            border-style: solid none solid;;
+            border-color: gray;
+            border-collapse: separate;
+        }
+        table.bk_table th {
+            text-align: center;
+            border-width: 1px;
+            border-style: none none outset;
+            -moz-border-radius: ;
+        }
+        table.bk_table td {
+            text-align: center;
+            -moz-border-radius: ;
+        }
+        .content_search>div {
+            padding: 4px 0;
+        }
+        .content_search td {
+            vertical-align: middle;
+            padding: 5px 0px;
+        }
+        .content_search th {
+            color: #444C54;
+            font-weight: bold;
+            text-align: left;
+        }
+    </style>
+{% endblock %}
+
+
+{% block left %}
+
+
+<div id="user_selection">
+
+{% include "webclient/base/includes/group_user_dropdown.html" %}
+    
+</div>
+
+
+<div id="searching">
+    <div class="left_panel_inner">
+
+    <h1> {% trans "Search again with additional image(s)" %}            <span id="searching_again_description" title="Search again - <small>Performs another round of search by image content. Using the previous settings (selected image(s), featureset, # retrieved images, and dataset), you can include additional images to the search query by selecting images. <br/><br/>
+            For example, if you have some images that you don't like among the current result, you can add those images as negative samples and do another round of search.</small>"><img src="{% static "webclient/images/help16.png" %}" /></span></h1>
+
+
+    <form id="content_search" class="content_search" method="POST" action="{% url contentsearch %}">
+
+        <div>
+            <table class="bk_table">
+                <thead> 
+                    <tr> 
+                        <th width=50%>{% trans "Featureset name" %}</th> 
+                        <th width=50%>{% trans "Dataset" %}</th> 
+                    </tr> 
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <input name="featureset_Name" value="{{ fset }}" style="display:none"/>
+                            {{ fset }}
+                        </td>
+                        <td>
+                            {% if dataset %}
+                                {{ dataset.getId }}: {{ dataset.getName }}
+                                <input name="dataset_ID" value="{{ dataset.getId }}" style="display:none"/>
+                            {% else %}
+                                Entire DB
+                            {% endif %}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div>
+            <label for="NumRetrieve">Retrieved images:</label>
+            <select name="NumRetrieve">
+                <option value="10" {% ifequal numret '10' %}selected='true'{% endifequal %}>10</option>
+                <option value="20" {% ifequal numret '20' %}selected='true'{% endifequal %}>20</option>
+                <option value="100" {% ifequal numret '100' %}selected='true'{% endifequal %}>100</option>
+                <option value="500" {% ifequal numret '500' %}selected='true'{% endifequal %}>500</option>
+            </select>
+        </div>
+
+        <input style="float:right" id="doSearch" type="button" value="Do Search"/> 
+
+        <div style="clear:both; padding:0px"></div>
+        <hr/>
+
+        <table id="searchImages">
+            <thead> 
+                <tr> 
+                    <th width="10%">{% trans "Image" %}</th>
+                    <th width="10%">C.Z.T</th>
+                    <th width="30%">{% trans "Name" %}</th>
+                    <th width="10%">{% trans "Type" %}</th>
+                </tr> 
+            </thead>
+            <tbody>
+                {% for c in images %}
+                    <tr>
+                        <td class="action">
+                            <img src="{% url render_thumbnail_resize 32 c.id  %}" alt="image" title="{{c.id}}"/>
+                            <input name="allIds" style="display:none" value="{{c.id}}" type="text" />
+
+                        </td>
+                        <td>
+                            <input style="display:none" type="text" name="czt-{{ c.id }}" value="{{ c.czt }}" size="3"></input>
+                            <span id="czt-{{ c.id }}">{{ c.czt }}</span>
+                        </td>
+                        <td>{{ c.name }}</td>
+                        <td align="center">
+                            <!-- hidden input for form submission -->
+                            <input name="posNeg-{{ c.id }}" style="display:none"
+                                value="{% if c.posNeg %}pos{% else %}neg{% endif %}" />
+                            {% if c.posNeg %}+{% else %}-{% endif %}
+                        </td> 
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </form>
+
+    </div>
+
+</div>
+
+
+{% endblock %}
