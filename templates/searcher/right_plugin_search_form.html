@@ -155,8 +155,9 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
                         </td>
                         <td>
                             <div style="position:relative">
+                                {% with defZ=c.getDefaultZ defT=c.getDefaultT %}
                                 <input style="display:none" type="text" name="czt-{{ c.id }}" value="0.0.0" size="3"></input>
-                                <span class="cztEdit" title="Edit Channel/Z/T">0.0.0</span>
+                                <span class="cztEdit" title="Edit Channel/Z/T">0.{{ defZ }}.{{ defT }}</span>
                                 <div class="cztSelects" style="display:none">
                                     <select title="Choose C index">
                                         {% for i in c.getSizeC|get_range %}
@@ -165,15 +166,20 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
                                     </select>
                                     <select title="Choose Z index">
                                         {% for i in c.getSizeZ|get_range %}
-                                            <option value="{{ i }}">{{ i }}</option>
+                                            <option value="{{ i }}" {% ifequal i defZ %}selected='true'{% endifequal %}>
+                                                {{ i }}
+                                            </option>
                                         {% endfor %}
                                     </select>
                                     <select title="Choose T index">
                                         {% for i in c.getSizeT|get_range %}
-                                            <option value="{{ i }}">{{ i }}</option>
+                                            <option value="{{ i }}" {% ifequal i defT %}selected='true'{% endifequal %}>
+                                                {{ i }}
+                                            </option>
                                         {% endfor %}
                                     </select>
                                 </div>
+                                {% endwith %}
                             </div>
                         </td>
                         <td>{{ c.name }}</td>
