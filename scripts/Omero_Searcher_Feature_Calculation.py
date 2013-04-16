@@ -4,26 +4,54 @@ import omero.model
 from omero.rtypes import rstring, rlong
 from datetime import datetime
 import itertools
+#import sys, os
+#os.environ['OMERO_CONTENTDB_PATH'] = os.path.join(
+#    os.environ['HOME'], 'var', 'pyslid.data')
+#sys.stderr.write(os.environ['OMERO_CONTENTDB_PATH'])
 import pyslid
 
-import sys, os
 
 def extractFeatures( conn, image, scale, set ):
     message = ''
 
     imageId = image.getId()
 
-    [fids, features, scale ] = pyslid.features.calculate( conn, imageId, 
-       scale, set, True, None, 0, [0], debug=True )
+    # TODO: should be configurable (or process all c/z/t)
+    # TODO: provide user option to only calculate if not already present
+    # (pyslid.feature.has)
+    pixels = 0
+    channels = [0]
+    zslice = 0
+    timepoint = 0
+    [fids, features, scale ] = pyslid.features.calculate(
+        conn, imageId, scale, set, True, None,
+        pixels, channels, zslice, timepoint, debug=True)
 
     if features is None:
       return message + 'Failed Image id:%d\n' % imageId
-    
+
+    # Create an individual OMERO.table for this image
+    #print fids
+    #print features
     answer = pyslid.features.link( conn, imageId, scale, fids, features, set )
+
     if answer:
-       return message + 'Extracted features from Image id:%d\n' % imageId
+        message += 'Extracted features from Image id:%d\n' % imageId
     else:
        return message + 'Failed to link features to Image id:%d\n' % imageId
+
+    # Create the global contentDB
+    # TODO: Implement this per-dataset level (already supported by PySLID)
+    server = 'NA'
+    username = 'NA'
+    answer, m = pyslid.database.direct.update(
+        conn, server, username, imageId, pixels, channels[0], zslice, timepoint,
+        fids, features, set)
+    if answer:
+        return message
+    return '%sFailed to update ContentDB with Image id:%d (%s)\n' (
+        message, imageID, m)
+
 
 def processImages(client, scriptParams):
     message = ''
@@ -99,7 +127,7 @@ def runScript():
         scripts.String(
             'Scale', optional=False, grouping='2',
             description='Scale',
-            default=rstring('0.1')),
+            default=rstring('1.0')),
 
         version = '0.0.1',
         authors = ['Ivan E. Cao-Berg', 'Lane Center for Comp Bio'],
