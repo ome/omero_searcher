@@ -11,7 +11,6 @@
         <table id="dataTable" class="tablesorter">
             <thead> 
                 <tr> 
-                    <th width="5%">Rank</th>
                     <th width="10%">{% trans "Image" %}</th>
                     <th width="5%">Rank</th>
                     <th width="10%">C.Z.T</th>
@@ -23,7 +22,6 @@
             <tbody>
                 {% for c in images %}
                     <tr id="image-{{ c.id }}" class="{{ c.getPermsCss }}">
-                        <td>{{ c.ranki }}</td>
                         <td class="action">
                             <img src="{% url render_thumbnail_resize 32 c.id  %}" alt="image" title="{{c.id}}"/>
                             <input name="allIds" style="display:none" value="{{c.id}}" type="text" />
