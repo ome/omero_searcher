@@ -126,7 +126,6 @@ def contentsearch( request, conn=None, **kwargs):
     ftset = request.POST.get("featureset_Name")
     image_refs_dict = {}
     #    Just a temporary hack whilst the storage of scales is sorted out
-    scale_list = set()
     for i in imageIds:
         try:
             logger.info('getScales %s %s, %s' % (i, type(i), ftset))
@@ -134,7 +133,6 @@ def contentsearch( request, conn=None, **kwargs):
         except Exception as e:
             logger.error(str(e))
             raise
-        scale_list.add(scale)
         pxId = '0'
         ipczt = "%s.%s.%s" % (i, pxId, request.POST.get("czt-%s" % i))
         pn = 1 if request.POST.get("posNeg-%s" % i) == "pos" else -1
@@ -145,22 +143,18 @@ def contentsearch( request, conn=None, **kwargs):
     assert(s == 'Good')
 
     def processIds(cdbr):
-        #return ['.'.join(str(c) for c in cdbr[6:11]), cdbr[2], cdbr[1]]
-        return ['.'.join(str(c) for c in cdbr[4:9]), cdbr[2], cdbr[1]]
+        return ['.'.join(str(c) for c in cdbr[6:11]), cdbr[2], cdbr[1]]
 
     def processSearchSet(cdb, im_ref_dict, dscale):
         logger.debug('processSearchSet cdb.keys():%s', cdb.keys())
-        #iid_cdb_dict = dict((k[6], k) for k in cdb[dscale])
-        iid_cdb_dict = dict((k[4], k) for k in cdb[dscale])
-        #iid_cdb_dict = dict((k[4], k) for k in cdb)
+        iid_cdb_dict = dict((k[6], k) for k in cdb[dscale])
         goodset_pos = []
 
         logger.debug('iid_cdb_dict.keys %s', iid_cdb_dict.keys())
         for id in im_ref_dict:
             iid = long(id.split('.')[0])
             logger.debug('id %s iid %s', id, iid)
-            #feats = iid_cdb_dict[iid][11:]
-            feats = iid_cdb_dict[iid][9:]
+            feats = iid_cdb_dict[iid][11:]
             logger.debug('feats %s', feats)
             goodset_pos.append([id, 1, feats])
             logger.debug('%s', [id, 1, feats])
@@ -168,16 +162,13 @@ def contentsearch( request, conn=None, **kwargs):
         logger.debug('goodset_pos %s', goodset_pos)
         return goodset_pos
 
-    # Hmmm. scale seems to be missing from the contentdb. Just hack it for
-    # testing.
-    cdb_tmp = {'info': None}
-    for sl in scale_list:
-        cdb_tmp[sl] = cdb
+    # Reminder: scale is currently partially hard coded until we work out
+    # what it's meant to be and how it should be set
 
-    logger.debug('contentsearch cdb_tmp.keys():%s', cdb_tmp.keys())
+    logger.debug('contentsearch cdb.keys():%s', cdb.keys())
     try:
         final_result, dscale = ricerca.content.rankingWrapper(
-            cdb_tmp, image_refs_dict, processIds, processSearchSet)
+            cdb, image_refs_dict, processIds, processSearchSet)
         logger.debug('contentsearch final_results:%s dscale:%s',
                      final_result, dscale)
     except Exception as e:
@@ -210,16 +201,20 @@ def contentsearch( request, conn=None, **kwargs):
         imgMap[i.getId()] = i
 
     images = []
+    ranki = 0
     for i in im_ids_sorted:
         iid = int(i.split(".")[0])
         if iid in imgMap:
             img = imgMap[iid]
             czt = i.split(".",1)[1]
+            ranki += 1
             images.append({'name':img.getName(),
                 'id':iid,
                 'getPermsCss': img.getPermsCss(),
+                'ranki': ranki,
                 'czt': czt})
     context['images'] = images
+    logger.debug('contentsearch images:%s', images)
 
     return context
 
