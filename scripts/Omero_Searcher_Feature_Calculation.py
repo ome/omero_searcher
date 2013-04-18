@@ -45,8 +45,8 @@ def extractFeatures( conn, image, scale, set ):
     server = 'NA'
     username = 'NA'
     answer, m = pyslid.database.direct.update(
-        conn, server, username, imageId, pixels, channels[0], zslice, timepoint,
-        fids, features, set)
+        conn, server, username, scale,
+        imageId, pixels, channels[0], zslice, timepoint, fids, features, set)
     if answer:
         return message
     return '%sFailed to update ContentDB with Image id:%d (%s)\n' (
