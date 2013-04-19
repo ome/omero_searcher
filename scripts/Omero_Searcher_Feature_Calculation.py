@@ -11,7 +11,13 @@ import itertools
 import pyslid
 
 
-def extractFeatures(conn, image, scale, ftset):
+def extractFeatures(conn, image, scale, ftset, scaleSet):
+    """
+    Calculate features for one image, link to the image, save to the ContentDB.
+    @param scaleSet a read write parameter, calculated scales should be
+    appended to this set so that a single removeDuplicates call can be made at
+    the end.
+    """
     message = ''
 
     imageId = image.getId()
@@ -42,12 +48,14 @@ def extractFeatures(conn, image, scale, ftset):
 
     # Create the global contentDB
     # TODO: Implement this per-dataset level (already supported by PySLID)
+    # TODO: Set server and usernames
     server = 'NA'
     username = 'NA'
     answer, m = pyslid.database.direct.update(
         conn, server, username, scale,
         imageId, pixels, channels[0], zslice, timepoint, fids, features, ftset)
     if answer:
+        scaleSet.add(scale)
         return message
     return '%sFailed to update ContentDB with Image id:%d (%s)\n' (
         message, imageID, m)
@@ -64,6 +72,7 @@ def processImages(client, scriptParams):
 
     try:
         nimages = 0
+        scaleSet = set()
 
         conn = omero.gateway.BlitzGateway(client_obj=client)
 
@@ -74,10 +83,13 @@ def processImages(client, scriptParams):
         if not objects:
             return message
 
+        # TODO: Consider wrapping each image calculation with a trry-catch
+        # so that we can attempt to continue on error?
+
         if dataType == 'Image':
             for image in objects:
                 message += 'Processing image id:%d\n' % image.getId()
-                msg = extractFeatures(conn, image, scale, ftset)
+                msg = extractFeatures(conn, image, scale, ftset, scaleSet)
                 
                 message += msg + '\n'
 
@@ -92,8 +104,18 @@ def processImages(client, scriptParams):
                 message += 'Processing dataset id:%d\n' % d.getId()
                 for image in d.listChildren():
                     message += 'Processing image id:%d\n' % image.getId()
-                    msg = extractFeatures(conn, image, scale, ftset)
+                    msg = extractFeatures(conn, image, scale, ftset, scaleSet)
                     message += msg + '\n'
+
+        # Finally tidy up by removing duplicates
+        for s in scaleSet:
+            message += 'Removing duplicates from scale:%g\n' % s
+            a, msg = pyslid.database.direct.removeDuplicates(
+                conn, s, ftset, did=None)
+            if not a:
+                message += 'Failed: '
+            message += msg + '\n'
+
 
     except:
         print message
