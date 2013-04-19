@@ -29,7 +29,7 @@ def extractFeatures(conn, image, scale, ftset, scaleSet):
     channels = [0]
     zslice = 0
     timepoint = 0
-    [fids, features, scale ] = pyslid.features.calculate(
+    [fids, features, scalec] = pyslid.features.calculate(
         conn, imageId, scale, ftset, True, None,
         pixels, channels, zslice, timepoint, debug=True)
 
