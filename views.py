@@ -155,15 +155,19 @@ def contentsearch( request, conn=None, **kwargs):
             iid = long(id.split('.')[0])
             logger.debug('id %s iid %s', id, iid)
             feats = iid_cdb_dict[iid][11:]
-            logger.debug('feats %s', feats)
+            #logger.debug('feats %s', feats)
             goodset_pos.append([id, 1, feats])
-            logger.debug('%s', [id, 1, feats])
+            #logger.debug('%s', [id, 1, feats])
 
-        logger.debug('goodset_pos %s', goodset_pos)
+        #logger.debug('goodset_pos %s', goodset_pos)
         return goodset_pos
 
+    # TODO:
     # Reminder: scale is currently partially hard coded until we work out
     # what it's meant to be and how it should be set
+    # TODO:
+    # If ContentDB contain duplicate entries for an image at the same scale
+    # rankingWrapper() will return duplicate results
 
     logger.debug('contentsearch cdb.keys():%s', cdb.keys())
     try:
@@ -214,7 +218,7 @@ def contentsearch( request, conn=None, **kwargs):
                 'ranki': ranki,
                 'czt': czt})
     context['images'] = images
-    logger.debug('contentsearch images:%s', images)
+    #logger.debug('contentsearch images:%s', images)
 
     return context
 
