@@ -11,7 +11,7 @@ import itertools
 import pyslid
 
 
-def extractFeatures( conn, image, scale, set ):
+def extractFeatures(conn, image, scale, ftset):
     message = ''
 
     imageId = image.getId()
@@ -24,7 +24,7 @@ def extractFeatures( conn, image, scale, set ):
     zslice = 0
     timepoint = 0
     [fids, features, scale ] = pyslid.features.calculate(
-        conn, imageId, scale, set, True, None,
+        conn, imageId, scale, ftset, True, None,
         pixels, channels, zslice, timepoint, debug=True)
 
     if features is None:
@@ -33,7 +33,7 @@ def extractFeatures( conn, image, scale, set ):
     # Create an individual OMERO.table for this image
     #print fids
     #print features
-    answer = pyslid.features.link( conn, imageId, scale, fids, features, set )
+    answer = pyslid.features.link(conn, imageId, scale, fids, features, ftset)
 
     if answer:
         message += 'Extracted features from Image id:%d\n' % imageId
@@ -46,7 +46,7 @@ def extractFeatures( conn, image, scale, set ):
     username = 'NA'
     answer, m = pyslid.database.direct.update(
         conn, server, username, scale,
-        imageId, pixels, channels[0], zslice, timepoint, fids, features, set)
+        imageId, pixels, channels[0], zslice, timepoint, fids, features, ftset)
     if answer:
         return message
     return '%sFailed to update ContentDB with Image id:%d (%s)\n' (
@@ -59,7 +59,7 @@ def processImages(client, scriptParams):
     # for params with default values, we can get the value directly
     dataType = scriptParams['Data_Type']
     ids = scriptParams['IDs']
-    set = scriptParams['Feature_set']
+    ftset = scriptParams['Feature_set']
     scale = float(scriptParams['Scale'])
 
     try:
@@ -77,7 +77,7 @@ def processImages(client, scriptParams):
         if dataType == 'Image':
             for image in objects:
                 message += 'Processing image id:%d\n' % image.getId()
-                msg = extractFeatures( conn, image, scale, set )
+                msg = extractFeatures(conn, image, scale, ftset)
                 
                 message += msg + '\n'
 
@@ -92,7 +92,7 @@ def processImages(client, scriptParams):
                 message += 'Processing dataset id:%d\n' % d.getId()
                 for image in d.listChildren():
                     message += 'Processing image id:%d\n' % image.getId()
-                    msg = extractFeatures( conn, image, scale, set )
+                    msg = extractFeatures(conn, image, scale, ftset)
                     message += msg + '\n'
 
     except:
