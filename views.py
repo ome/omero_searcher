@@ -86,6 +86,8 @@ def searchpage( request, iIds=None, dId = None, fset = None, numret = None, negI
     return context
 
 import pyslid
+from omero_searcher_config import omero_contentdb_path
+pyslid.database.direct.set_contentdb_path(omero_contentdb_path)
 import ricerca
 
 # import omeroweb.searcher.searchContent as searchContent   TODO: import currently failing

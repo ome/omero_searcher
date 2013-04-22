@@ -4,11 +4,10 @@ import omero.model
 from omero.rtypes import rstring, rlong
 from datetime import datetime
 import itertools
-#import sys, os
-#os.environ['OMERO_CONTENTDB_PATH'] = os.path.join(
-#    os.environ['HOME'], 'var', 'pyslid.data')
-#sys.stderr.write(os.environ['OMERO_CONTENTDB_PATH'])
+
 import pyslid
+from omeroweb.omero_searcher.omero_searcher_config import omero_contentdb_path
+pyslid.database.direct.set_contentdb_path(omero_contentdb_path)
 
 
 def extractFeatures(conn, image, scale, ftset, scaleSet):

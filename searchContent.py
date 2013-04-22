@@ -28,6 +28,9 @@ import pyslid.utilities
 import pyslid.database.direct
 import ricerca.content
 
+from omero_searcher_config import omero_contentdb_path
+pyslid.database.direct.set_contentdb_path(omero_contentdb_path)
+
 import logging
 logger = logging.getLogger('searchContent')
 
