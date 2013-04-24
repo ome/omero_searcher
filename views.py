@@ -199,7 +199,8 @@ def contentsearch( request, conn=None, **kwargs):
         iid = int(i.split(".")[0])
         if iid in imgMap:
             img = imgMap[iid]
-            czt = i.split(".",1)[1]
+            # id.px.c.z.t
+            czt = i.split(".", 2)[2]
             ranki += 1
             images.append({'name':img.getName(),
                 'id':iid,
