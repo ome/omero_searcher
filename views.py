@@ -103,6 +103,7 @@ def contentsearch( request, conn=None, **kwargs):
     dId = request.POST.get("dataset_ID", None)
     fset = request.POST.get("featureset_Name")
     numret = request.POST.get("NumRetrieve")
+    numret = int(numret)
 
     iIds = request.POST.getlist("allIds")
     imageIds = [int(i) for i in iIds]
@@ -182,6 +183,7 @@ def contentsearch( request, conn=None, **kwargs):
 
 
     im_ids_sorted = [r[0] for r in final_result]
+    im_ids_sorted = im_ids_sorted[:numret]
     logger.debug('contentsearch im_ids_sorted:%s', im_ids_sorted)
 
 
