@@ -7,10 +7,12 @@
         <!-- from search_details.html -->
     <div>
 
+        {# dataTable is automatically sorted by the second column #}
         <table id="dataTable" class="tablesorter">
             <thead> 
                 <tr> 
                     <th width="10%">{% trans "Image" %}</th>
+                    <th width="5%">Rank</th>
                     <th width="10%">C.Z.T</th>
                     <th width="30%">{% trans "Name" %}</th>
                     <th width="10%">{% trans "Negative" %}</th>
@@ -25,6 +27,7 @@
                             <input name="allIds" style="display:none" value="{{c.id}}" type="text" />
 
                         </td>
+                        <td class="ranking">{{ c.ranki }}</td>
                         <td>
                             <div style="position:relative">
                                 <input style="display:none" type="text" name="czt-{{ c.id }}" value="{{ c.czt }}" size="3"></input>

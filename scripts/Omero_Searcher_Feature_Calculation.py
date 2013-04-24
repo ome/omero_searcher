@@ -4,26 +4,61 @@ import omero.model
 from omero.rtypes import rstring, rlong
 from datetime import datetime
 import itertools
+
 import pyslid
+from omeroweb.omero_searcher.omero_searcher_config import omero_contentdb_path
+pyslid.database.direct.set_contentdb_path(omero_contentdb_path)
 
-import sys, os
 
-def extractFeatures( conn, image, scale, set ):
+def extractFeatures(conn, image, scale, ftset, scaleSet):
+    """
+    Calculate features for one image, link to the image, save to the ContentDB.
+    @param scaleSet a read write parameter, calculated scales should be
+    appended to this set so that a single removeDuplicates call can be made at
+    the end.
+    """
     message = ''
 
     imageId = image.getId()
 
-    [fids, features, scale ] = pyslid.features.calculate( conn, imageId, 
-       scale, set, True, None, 0, [0], debug=True )
+    # TODO: should be configurable (or process all c/z/t)
+    # TODO: provide user option to only calculate if not already present
+    # (pyslid.feature.has)
+    pixels = 0
+    channels = [0]
+    zslice = 0
+    timepoint = 0
+    [fids, features, scalec] = pyslid.features.calculate(
+        conn, imageId, scale, ftset, True, None,
+        pixels, channels, zslice, timepoint, debug=True)
 
     if features is None:
       return message + 'Failed Image id:%d\n' % imageId
-    
-    answer = pyslid.features.link( conn, imageId, scale, fids, features, set )
+
+    # Create an individual OMERO.table for this image
+    #print fids
+    #print features
+    answer = pyslid.features.link(conn, imageId, scale, fids, features, ftset)
+
     if answer:
-       return message + 'Extracted features from Image id:%d\n' % imageId
+        message += 'Extracted features from Image id:%d\n' % imageId
     else:
        return message + 'Failed to link features to Image id:%d\n' % imageId
+
+    # Create the global contentDB
+    # TODO: Implement this per-dataset level (already supported by PySLID)
+    # TODO: Set server and usernames
+    server = 'NA'
+    username = 'NA'
+    answer, m = pyslid.database.direct.update(
+        conn, server, username, scale,
+        imageId, pixels, channels[0], zslice, timepoint, fids, features, ftset)
+    if answer:
+        scaleSet.add(scale)
+        return message
+    return '%sFailed to update ContentDB with Image id:%d (%s)\n' (
+        message, imageID, m)
+
 
 def processImages(client, scriptParams):
     message = ''
@@ -31,11 +66,12 @@ def processImages(client, scriptParams):
     # for params with default values, we can get the value directly
     dataType = scriptParams['Data_Type']
     ids = scriptParams['IDs']
-    set = scriptParams['Feature_set']
+    ftset = scriptParams['Feature_set']
     scale = float(scriptParams['Scale'])
 
     try:
         nimages = 0
+        scaleSet = set()
 
         conn = omero.gateway.BlitzGateway(client_obj=client)
 
@@ -46,10 +82,13 @@ def processImages(client, scriptParams):
         if not objects:
             return message
 
+        # TODO: Consider wrapping each image calculation with a trry-catch
+        # so that we can attempt to continue on error?
+
         if dataType == 'Image':
             for image in objects:
                 message += 'Processing image id:%d\n' % image.getId()
-                msg = extractFeatures( conn, image, scale, set )
+                msg = extractFeatures(conn, image, scale, ftset, scaleSet)
                 
                 message += msg + '\n'
 
@@ -64,8 +103,18 @@ def processImages(client, scriptParams):
                 message += 'Processing dataset id:%d\n' % d.getId()
                 for image in d.listChildren():
                     message += 'Processing image id:%d\n' % image.getId()
-                    msg = extractFeatures( conn, image, scale, set )
+                    msg = extractFeatures(conn, image, scale, ftset, scaleSet)
                     message += msg + '\n'
+
+        # Finally tidy up by removing duplicates
+        for s in scaleSet:
+            message += 'Removing duplicates from scale:%g\n' % s
+            a, msg = pyslid.database.direct.removeDuplicates(
+                conn, s, ftset, did=None)
+            if not a:
+                message += 'Failed: '
+            message += msg + '\n'
+
 
     except:
         print message
@@ -99,7 +148,7 @@ def runScript():
         scripts.String(
             'Scale', optional=False, grouping='2',
             description='Scale',
-            default=rstring('0.1')),
+            default=rstring('1.0')),
 
         version = '0.0.1',
         authors = ['Ivan E. Cao-Berg', 'Lane Center for Comp Bio'],
