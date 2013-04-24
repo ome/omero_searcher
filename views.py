@@ -127,10 +127,9 @@ def contentsearch( request, conn=None, **kwargs):
 
     ftset = request.POST.get("featureset_Name")
     image_refs_dict = {}
-    #    Just a temporary hack whilst the storage of scales is sorted out
     for i in imageIds:
         try:
-            logger.info('getScales %s %s, %s' % (i, type(i), ftset))
+            logger.debug('getScales %s %s' % (i, ftset))
             scale = pyslid.features.getScales(conn, i, str(ftset), True)[0]
         except Exception as e:
             logger.error(str(e))
@@ -182,20 +181,8 @@ def contentsearch( request, conn=None, **kwargs):
         #raise
 
 
-    # im_ids_sorted, MSG = searchContent.relevanceFeedback(conn, parameterMap, server_name,owner)
-
-    #im_ids_sorted = []
     im_ids_sorted = [r[0] for r in final_result]
     logger.debug('contentsearch im_ids_sorted:%s', im_ids_sorted)
-
-
-    # ------------ RANDOM IMAGES (replace this with search!) --------------
-    #f = omero.sys.Filter()
-    #f.limit = rint(numret)
-    #randomImages = conn.getQueryService().findAll("Image", f)
-    #for i in randomImages:
-    #    im_ids_sorted.append("%s.0.0.0" % i.id.val)
-    # ---------------------------------------------------------------------
 
 
     context = {'template': 'searcher/contentsearch/searchresult.html'}
