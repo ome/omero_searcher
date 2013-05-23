@@ -45,6 +45,10 @@ def right_plugin_search_form (request, conn=None, **kwargs):
     imageIds =  request.REQUEST.getlist('image')
     if len(imageIds) > 0:
         context['images'] = list( conn.getObjects("Image", imageIds) )
+    logger.debug('Context:%s', context)
+    logger.debug('Context Datasets:%s Images:%s',
+                 [x.getId() for x in datasets],
+                 [x for x in imageIds])
     return context
 
 
@@ -58,6 +62,8 @@ def searchpage( request, iIds=None, dId = None, fset = None, numret = None, negI
     """
 
     context = {'template': 'searcher/contentsearch/searchpage.html'}
+
+    logger.debug('searchpage POST:%s', request.POST)
 
     dId = request.POST.get("dataset_ID", None)
     if dId is not None:
@@ -79,6 +85,10 @@ def searchpage( request, iIds=None, dId = None, fset = None, numret = None, negI
 
     return context
 
+import pyslid
+from omero_searcher_config import omero_contentdb_path
+pyslid.database.direct.set_contentdb_path(omero_contentdb_path)
+import ricerca
 
 # import omeroweb.searcher.searchContent as searchContent   TODO: import currently failing
 @login_required()
@@ -88,9 +98,12 @@ def contentsearch( request, conn=None, **kwargs):
     #server_name=request.META['SERVER_NAME']
     #owner=request.session['username']
 
+    logger.debug('contentsearch POST:%s', request.POST)
+
     dId = request.POST.get("dataset_ID", None)
     fset = request.POST.get("featureset_Name")
     numret = request.POST.get("NumRetrieve")
+    numret = int(numret)
 
     iIds = request.POST.getlist("allIds")
     imageIds = [int(i) for i in iIds]
@@ -112,17 +125,66 @@ def contentsearch( request, conn=None, **kwargs):
 
     print parameterMap
 
-    # im_ids_sorted, MSG = searchContent.relevanceFeedback(conn, parameterMap, server_name,owner)
 
-    im_ids_sorted = []
+    ftset = request.POST.get("featureset_Name")
+    image_refs_dict = {}
+    for i in imageIds:
+        try:
+            logger.debug('getScales %s %s' % (i, ftset))
+            scale = pyslid.features.getScales(conn, i, str(ftset), True)[0]
+        except Exception as e:
+            logger.error(str(e))
+            raise
+        pxId = '0'
+        ipczt = "%s.%s.%s" % (i, pxId, request.POST.get("czt-%s" % i))
+        pn = 1 if request.POST.get("posNeg-%s" % i) == "pos" else -1
+        image_refs_dict[ipczt] = [(scale, ''), pn]
+    logger.debug('contentsearch image_refs_dict:%s', image_refs_dict)
 
-    # ------------ RANDOM IMAGES (replace this with search!) --------------
-    f = omero.sys.Filter()
-    f.limit = rint(numret)
-    randomImages = conn.getQueryService().findAll("Image", f)
-    for i in randomImages:
-        im_ids_sorted.append("%s.0.0.0" % i.id.val)
-    # ---------------------------------------------------------------------
+    cdb, s = pyslid.database.direct.retrieve(conn, ftset)
+    assert(s == 'Good')
+
+    def processIds(cdbr):
+        return ['.'.join(str(c) for c in cdbr[6:11]), cdbr[2], cdbr[1]]
+
+    def processSearchSet(cdb, im_ref_dict, dscale):
+        logger.debug('processSearchSet cdb.keys():%s', cdb.keys())
+        iid_cdb_dict = dict((k[6], k) for k in cdb[dscale])
+        goodset_pos = []
+
+        logger.debug('iid_cdb_dict.keys %s', iid_cdb_dict.keys())
+        for id in im_ref_dict:
+            iid = long(id.split('.')[0])
+            logger.debug('id %s iid %s', id, iid)
+            feats = iid_cdb_dict[iid][11:]
+            #logger.debug('feats %s', feats)
+            goodset_pos.append([id, 1, feats])
+            #logger.debug('%s', [id, 1, feats])
+
+        #logger.debug('goodset_pos %s', goodset_pos)
+        return goodset_pos
+
+    # TODO:
+    # Reminder: scale is currently partially hard coded until we work out
+    # what it's meant to be and how it should be set
+    # TODO:
+    # If ContentDB contain duplicate entries for an image at the same scale
+    # rankingWrapper() will return duplicate results
+
+    logger.debug('contentsearch cdb.keys():%s', cdb.keys())
+    try:
+        final_result, dscale = ricerca.content.rankingWrapper(
+            cdb, image_refs_dict, processIds, processSearchSet)
+        logger.debug('contentsearch final_results:%s dscale:%s',
+                     final_result, dscale)
+    except Exception as e:
+        logger.error(str(e))
+        #raise
+
+
+    im_ids_sorted = [r[0] for r in final_result]
+    im_ids_sorted = im_ids_sorted[:numret]
+    logger.debug('contentsearch im_ids_sorted:%s', im_ids_sorted)
 
 
     context = {'template': 'searcher/contentsearch/searchresult.html'}
@@ -134,16 +196,21 @@ def contentsearch( request, conn=None, **kwargs):
         imgMap[i.getId()] = i
 
     images = []
+    ranki = 0
     for i in im_ids_sorted:
         iid = int(i.split(".")[0])
         if iid in imgMap:
             img = imgMap[iid]
-            czt = i.split(".",1)[1]
+            # id.px.c.z.t
+            czt = i.split(".", 2)[2]
+            ranki += 1
             images.append({'name':img.getName(),
                 'id':iid,
                 'getPermsCss': img.getPermsCss(),
+                'ranki': ranki,
                 'czt': czt})
     context['images'] = images
+    #logger.debug('contentsearch images:%s', images)
 
     return context
 

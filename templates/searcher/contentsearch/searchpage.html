@@ -20,6 +20,7 @@
                         type = $this.attr("value") == "pos" ? "+" : "-";
                     $tr.find("input[type=radio]").hide();   // Hide posNeg radio buttons
                     $tr.find(".posNegType").text(type).show();
+                    $tr.find(".ranking").hide(); // Hide ranking
                     $("td:last", $tr).hide();
                     $tbody.append($tr);
                 });
@@ -137,6 +138,7 @@
             <thead> 
                 <tr> 
                     <th width="10%">{% trans "Image" %}</th>
+                    <th style="display:none"></th>
                     <th width="10%">C.Z.T</th>
                     <th width="30%">{% trans "Name" %}</th>
                     <th width="10%">{% trans "Type" %}</th>
@@ -150,6 +152,7 @@
                             <input name="allIds" style="display:none" value="{{c.id}}" type="text" />
 
                         </td>
+                        <td style="display:none"></td>
                         <td>
                             <input style="display:none" type="text" name="czt-{{ c.id }}" value="{{ c.czt }}" size="3"></input>
                             <span id="czt-{{ c.id }}">{{ c.czt }}</span>
