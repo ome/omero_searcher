@@ -21,6 +21,11 @@ from omero.rtypes import rint
 
 logger = logging.getLogger('searcher')
 
+import pyslid
+from omero_searcher_config import omero_contentdb_path
+pyslid.database.direct.set_contentdb_path(omero_contentdb_path)
+import ricerca
+
 
 @login_required()
 @render_response()
@@ -77,18 +82,22 @@ def searchpage( request, iIds=None, dId = None, fset = None, numret = None, negI
     for i in conn.getObjects("Image", imageIds):
         posNeg = request.POST.get("posNeg-%s" % i.id) == "pos"
         czt = request.POST.get("czt-%s" % i.id)
+        try:
+            # This seems to be the best though non-ideal way to see if there
+            # are features for this image
+            hasFeats = pyslid.features.getScales(conn, i.id, str(context['fset']))
+            hasFeats = len(hasFeats) > 0
+        except pyslid.utilities.PyslidException:
+            hasFeats = False
         images.append({'name':i.getName(),
             'id':i.getId(),
             'posNeg': posNeg,
-            'czt': czt})
+            'czt': czt,
+            'hasFeats': hasFeats})
     context['images'] = images
 
     return context
 
-import pyslid
-from omero_searcher_config import omero_contentdb_path
-pyslid.database.direct.set_contentdb_path(omero_contentdb_path)
-import ricerca
 
 # import omeroweb.searcher.searchContent as searchContent   TODO: import currently failing
 @login_required()
@@ -132,6 +141,9 @@ def contentsearch( request, conn=None, **kwargs):
         try:
             logger.debug('getScales %s %s' % (i, ftset))
             scale = pyslid.features.getScales(conn, i, str(ftset), True)[0]
+        except pyslid.utilities.PyslidException:
+            logger.debug('No features found for image: %d', i)
+            continue
         except Exception as e:
             logger.error(str(e))
             raise
@@ -172,6 +184,11 @@ def contentsearch( request, conn=None, **kwargs):
     # rankingWrapper() will return duplicate results
 
     logger.debug('contentsearch cdb.keys():%s', cdb.keys())
+    if len(image_refs_dict) == 0:
+        # No images had features
+        context = {'template': 'searcher/contentsearch/search_no_input_features.html'}
+        return context
+
     try:
         final_result, dscale = ricerca.content.rankingWrapper(
             cdb, image_refs_dict, processIds, processSearchSet)
@@ -179,8 +196,7 @@ def contentsearch( request, conn=None, **kwargs):
                      final_result, dscale)
     except Exception as e:
         logger.error(str(e))
-        #raise
-
+        raise
 
     im_ids_sorted = [r[0] for r in final_result]
     im_ids_sorted = im_ids_sorted[:numret]

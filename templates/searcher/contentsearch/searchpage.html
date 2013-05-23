@@ -162,7 +162,7 @@
                             <!-- hidden input for form submission -->
                             <input name="posNeg-{{ c.id }}" style="display:none"
                                 value="{% if c.posNeg %}pos{% else %}neg{% endif %}" />
-                            {% if c.posNeg %}+{% else %}-{% endif %}
+                            {% if not c.hasFeats %}No features{% else %}{% if c.posNeg %}+{% else %}-{% endif %}{% endif %}
                         </td> 
                     </tr>
                 {% endfor %}
