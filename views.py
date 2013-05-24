@@ -154,7 +154,14 @@ def contentsearch( request, conn=None, **kwargs):
     logger.debug('contentsearch image_refs_dict:%s', image_refs_dict)
 
     cdb, s = pyslid.database.direct.retrieve(conn, ftset)
-    assert(s == 'Good')
+
+    if s != 'Good':
+        context = {'template':
+                       'searcher/contentsearch/search_error.html'}
+        context['message'] = (
+            'The ContentDB for feature-set %s could not be found.'
+            'Have you calculated any features?') % ftset
+        return context
 
     def processIds(cdbr):
         return ['.'.join(str(c) for c in cdbr[6:11]), cdbr[2], cdbr[1]]
@@ -186,7 +193,12 @@ def contentsearch( request, conn=None, **kwargs):
     logger.debug('contentsearch cdb.keys():%s', cdb.keys())
     if len(image_refs_dict) == 0:
         # No images had features
-        context = {'template': 'searcher/contentsearch/search_no_input_features.html'}
+        context = {'template':
+                       'searcher/contentsearch/search_error.html'}
+        context['message'] = (
+            'No features were found for the reference images. Please use the '
+            'Omero Searcher Feature Calculation script to calculate them '
+            'before running a search.')
         return context
 
     try:
