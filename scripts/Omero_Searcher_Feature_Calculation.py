@@ -11,6 +11,9 @@ from omeroweb.omero_searcher.omero_searcher_config import omero_contentdb_path
 pyslid.database.direct.set_contentdb_path(omero_contentdb_path)
 
 
+# 0 or 1 based indexing in the UI?
+IDX_OFFSET = 0
+
 def extractFeatures(conn, image, scale, ftset, scaleSet,
                     channels, zselect, tselect):
     """
@@ -27,37 +30,41 @@ def extractFeatures(conn, image, scale, ftset, scaleSet,
     # TODO: provide user option to only calculate if not already present
     # (pyslid.feature.has)
     pixels = 0
-    if channels[0] < 1 or channels[0] > image.getSizeC():
-        return message + 'Channel %d not found in Image id:%d\n' % (
-            channels[0], imageId)
+    if channels[0] < IDX_OFFSET or channels[0] >= image.getSizeC() + IDX_OFFSET:
+        m = 'Channel %d not found in Image id:%d' % (channels[0], imageId)
+        sys.stderr.write(m)
+        return message + m
     if ftset == 'slf33':
-        channels = (channels[0] - 1,)
+        channels = (channels[0] - IDX_OFFSET,)
     if ftset == 'slf34':
-        if channels[1] < 1 or channels[1] > image.getSizeC():
+        if (channels[1] < IDX_OFFSET or
+            channels[1] >= image.getSizeC() + IDX_OFFSET):
             m = 'Channel %d not found in Image id:%d' % (channels[1], imageId)
             sys.stderr.write(m)
             return message + m + '\n'
-        channels = (channels[0], channels[1])
+        channels = (channels[0] - IDX_OFFSET, channels[1] - IDX_OFFSET)
 
     if zselect[0] == 'Middle':
         zslice = image.getSizeZ() / 2
     elif zselect[0] == 'Select Index':
-        if zselect[1] < 1 or zselect[1] > image.getSizeZ():
+        if (zselect[1] < IDX_OFFSET or
+            zselect[1] >= image.getSizeZ() + IDX_OFFSET):
             m = 'Z-slice %d not found in Image id:%d' % (zselect[1], imageId)
             sys.stderr.write(m)
             return message + m + '\n'
-        zslice = zselect[1] - 1
+        zslice = zselect[1] - IDX_OFFSET
     else:
         raise Exception('Unexpected zselect')
 
     if tselect[0] == 'Middle':
         timepoint = image.getSizeT() / 2
     elif tselect[0] == 'Select Index':
-        if tselect[1] < 1 or tselect[1] > image.getSizeT():
+        if (tselect[1] < IDX_OFFSET or
+            tselect[1] >= image.getSizeT() + IDX_OFFSET):
             m = 'Timepoint %d not found in Image id:%d' % (tselect[1], imageId)
             sys.stderr.write(m)
             return message + m + '\n'
-        timepoint = tselect[1] - 1
+        timepoint = tselect[1] - IDX_OFFSET
     else:
         raise Exception('Unexpected tselect')
 
@@ -193,13 +200,15 @@ def runScript():
 
         scripts.Long(
             'Readout_Channel', optional=False, grouping='2',
-            description='slf33/slf34 readout channel, starting from 1',
-            default=1),
+            description=('slf33/slf34 readout channel, starting from %d' %
+                         IDX_OFFSET),
+            default=IDX_OFFSET),
 
         scripts.Long(
             'Reference_Channel', optional=False, grouping='2',
-            description='slf34 reference channel (ignored for slf33), starting from 1',
-            default=2),
+            description=('slf34 reference channel (ignored for slf33), starting from %d' %
+                         IDX_OFFSET),
+            default=IDX_OFFSET + 1),
 
 
         scripts.String('Z_Index', optional=False, grouping='3',
@@ -209,7 +218,8 @@ def runScript():
 
         scripts.Long(
             'Select_Z', optional=False, grouping='3',
-            description='Select Z index if not middle (starting from 1)',
+            description=('Select Z index if not middle (starting from %d)' %
+                         IDX_OFFSET),
             default=-1),
 
 
@@ -220,7 +230,8 @@ def runScript():
 
         scripts.Long(
             'Select_T', optional=False, grouping='4',
-            description='Select timepoint if not middle (starting from 1)',
+            description=('Select timepoint if not middle (starting from %d)' %
+                         IDX_OFFSET),
             default=-1),
 
 
