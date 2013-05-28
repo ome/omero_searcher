@@ -4,13 +4,15 @@ import omero.model
 from omero.rtypes import rstring, rlong
 from datetime import datetime
 import itertools
+import sys
 
 import pyslid
 from omeroweb.omero_searcher.omero_searcher_config import omero_contentdb_path
 pyslid.database.direct.set_contentdb_path(omero_contentdb_path)
 
 
-def extractFeatures(conn, image, scale, ftset, scaleSet):
+def extractFeatures(conn, image, scale, ftset, scaleSet,
+                    channels, zselect, tselect):
     """
     Calculate features for one image, link to the image, save to the ContentDB.
     @param scaleSet a read write parameter, calculated scales should be
@@ -25,9 +27,42 @@ def extractFeatures(conn, image, scale, ftset, scaleSet):
     # TODO: provide user option to only calculate if not already present
     # (pyslid.feature.has)
     pixels = 0
-    channels = [0]
-    zslice = 0
-    timepoint = 0
+    if channels[0] < 1 or channels[0] > image.getSizeC():
+        return message + 'Channel %d not found in Image id:%d\n' % (
+            channels[0], imageId)
+    if ftset == 'slf33':
+        channels = (channels[0] - 1,)
+    if ftset == 'slf34':
+        if channels[1] < 1 or channels[1] > image.getSizeC():
+            m = 'Channel %d not found in Image id:%d' % (channels[1], imageId)
+            sys.stderr.write(m)
+            return message + m + '\n'
+        channels = (channels[0], channels[1])
+
+    if zselect[0] == 'Middle':
+        zslice = image.getSizeZ() / 2
+    elif zselect[0] == 'Select Index':
+        if zselect[1] < 1 or zselect[1] > image.getSizeZ():
+            m = 'Z-slice %d not found in Image id:%d' % (zselect[1], imageId)
+            sys.stderr.write(m)
+            return message + m + '\n'
+        zslice = zselect[1] - 1
+    else:
+        raise Exception('Unexpected zselect')
+
+    if tselect[0] == 'Middle':
+        timepoint = image.getSizeT() / 2
+    elif tselect[0] == 'Select Index':
+        if tselect[1] < 1 or tselect[1] > image.getSizeT():
+            m = 'Timepoint %d not found in Image id:%d' % (tselect[1], imageId)
+            sys.stderr.write(m)
+            return message + m + '\n'
+        timepoint = tselect[1] - 1
+    else:
+        raise Exception('Unexpected tselect')
+
+    message += 'Calculating features ftset:%s scale:%e c:%s z:%d t:%d\n' % (
+        ftset, scale, channels, zslice, timepoint)
     [fids, features, scalec] = pyslid.features.calculate(
         conn, imageId, scale, ftset, True, None,
         pixels, channels, zslice, timepoint, debug=True)
@@ -69,6 +104,12 @@ def processImages(client, scriptParams):
     ftset = scriptParams['Feature_set']
     scale = float(scriptParams['Scale'])
 
+    channels = (scriptParams['Readout_Channel'],
+                scriptParams['Reference_Channel'])
+
+    zselect = (scriptParams['Z_Index'], scriptParams['Select_Z'])
+    tselect = (scriptParams['Timepoint'], scriptParams['Select_T'])
+
     try:
         nimages = 0
         scaleSet = set()
@@ -88,8 +129,9 @@ def processImages(client, scriptParams):
         if dataType == 'Image':
             for image in objects:
                 message += 'Processing image id:%d\n' % image.getId()
-                msg = extractFeatures(conn, image, scale, ftset, scaleSet)
-                
+                msg = extractFeatures(
+                    conn, image, scale, ftset, scaleSet,
+                    channels, zselect, tselect)
                 message += msg + '\n'
 
         else:
@@ -103,7 +145,9 @@ def processImages(client, scriptParams):
                 message += 'Processing dataset id:%d\n' % d.getId()
                 for image in d.listChildren():
                     message += 'Processing image id:%d\n' % image.getId()
-                    msg = extractFeatures(conn, image, scale, ftset, scaleSet)
+                    msg = extractFeatures(
+                        conn, image, scale, ftset, scaleSet,
+                        channels, zselect, tselect)
                     message += msg + '\n'
 
         # Finally tidy up by removing duplicates
@@ -131,6 +175,7 @@ def runScript():
         'OMERO.searcher Feature Calculation',
         'Calculate and link features',
 
+
         scripts.String('Data_Type', optional=False, grouping='1',
                        description='The data you want to work with.',
                        values=[rstring('Project'), rstring('Dataset'), rstring('Image')],
@@ -140,15 +185,50 @@ def runScript():
             'IDs', optional=False, grouping='1',
             description='List of Dataset, Project or Image IDs').ofType(rlong(0)),
 
-        scripts.String('Feature_set', optional=False, grouping='1',
+
+        scripts.String('Feature_set', optional=False, grouping='2',
                        description='SLF set',
                        values=[rstring('slf33'), rstring('slf34')],
                        default='slf33'),
 
+        scripts.Long(
+            'Readout_Channel', optional=False, grouping='2',
+            description='slf33/slf34 readout channel, starting from 1',
+            default=1),
+
+        scripts.Long(
+            'Reference_Channel', optional=False, grouping='2',
+            description='slf34 reference channel (ignored for slf33), starting from 1',
+            default=2),
+
+
+        scripts.String('Z_Index', optional=False, grouping='3',
+                       description='Which Z-slice to use',
+                       values=[rstring('Middle'), rstring('Select Index')],
+                       default='Middle'),
+
+        scripts.Long(
+            'Select_Z', optional=False, grouping='3',
+            description='Select Z index if not middle (starting from 1)',
+            default=-1),
+
+
+        scripts.String('Timepoint', optional=False, grouping='4',
+                       description='Which timepoint to use',
+                       values=[rstring('Middle'), rstring('Select Index')],
+                       default='Middle'),
+
+        scripts.Long(
+            'Select_T', optional=False, grouping='4',
+            description='Select timepoint if not middle (starting from 1)',
+            default=-1),
+
+
         scripts.String(
-            'Scale', optional=False, grouping='2',
+            'Scale', optional=False, grouping='5',
             description='Scale',
             default=rstring('1.0')),
+
 
         version = '0.0.1',
         authors = ['Ivan E. Cao-Berg', 'Lane Center for Comp Bio'],
