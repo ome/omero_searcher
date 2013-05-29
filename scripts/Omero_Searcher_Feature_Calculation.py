@@ -80,7 +80,9 @@ def extractFeatures(conn, image, scale, ftset, scaleSet,
     # Create an individual OMERO.table for this image
     #print fids
     #print features
-    answer = pyslid.features.link(conn, imageId, scale, fids, features, ftset)
+    answer = pyslid.features.link(
+        conn, imageId, scale, fids, features, ftset, field=True, rid=None,
+        pixels=0, channel=channels[0], zslice=zslice, timepoint=timepoint)
 
     if answer:
         message += 'Extracted features from Image id:%d\n' % imageId
