@@ -14,8 +14,10 @@ pyslid.database.direct.set_contentdb_path(omero_contentdb_path)
 # 0 or 1 based indexing in the UI?
 IDX_OFFSET = 0
 
-def extractFeatures(conn, image, scale, ftset, scaleSet,
-                    channels, zselect, tselect):
+
+
+def extractFeaturesOneChannel(conn, image, scale, ftset, scaleSet,
+                              channels, zslice, timepoint):
     """
     Calculate features for one image, link to the image, save to the ContentDB.
     @param scaleSet a read write parameter, calculated scales should be
@@ -23,50 +25,8 @@ def extractFeatures(conn, image, scale, ftset, scaleSet,
     the end.
     """
     message = ''
-
     imageId = image.getId()
-
-    # TODO: should be configurable (or process all c/z/t)
-    # TODO: provide user option to only calculate if not already present
-    # (pyslid.feature.has)
     pixels = 0
-    if channels[0] < IDX_OFFSET or channels[0] >= image.getSizeC() + IDX_OFFSET:
-        m = 'Channel %d not found in Image id:%d' % (channels[0], imageId)
-        sys.stderr.write(m)
-        return message + m
-    if ftset == 'slf33':
-        channels = (channels[0] - IDX_OFFSET,)
-    if ftset == 'slf34':
-        if (channels[1] < IDX_OFFSET or
-            channels[1] >= image.getSizeC() + IDX_OFFSET):
-            m = 'Channel %d not found in Image id:%d' % (channels[1], imageId)
-            sys.stderr.write(m)
-            return message + m + '\n'
-        channels = (channels[0] - IDX_OFFSET, channels[1] - IDX_OFFSET)
-
-    if zselect[0] == 'Middle':
-        zslice = image.getSizeZ() / 2
-    elif zselect[0] == 'Select Index':
-        if (zselect[1] < IDX_OFFSET or
-            zselect[1] >= image.getSizeZ() + IDX_OFFSET):
-            m = 'Z-slice %d not found in Image id:%d' % (zselect[1], imageId)
-            sys.stderr.write(m)
-            return message + m + '\n'
-        zslice = zselect[1] - IDX_OFFSET
-    else:
-        raise Exception('Unexpected zselect')
-
-    if tselect[0] == 'Middle':
-        timepoint = image.getSizeT() / 2
-    elif tselect[0] == 'Select Index':
-        if (tselect[1] < IDX_OFFSET or
-            tselect[1] >= image.getSizeT() + IDX_OFFSET):
-            m = 'Timepoint %d not found in Image id:%d' % (tselect[1], imageId)
-            sys.stderr.write(m)
-            return message + m + '\n'
-        timepoint = tselect[1] - IDX_OFFSET
-    else:
-        raise Exception('Unexpected tselect')
 
     message += 'Calculating features ftset:%s scale:%e c:%s z:%d t:%d\n' % (
         ftset, scale, channels, zslice, timepoint)
@@ -105,6 +65,67 @@ def extractFeatures(conn, image, scale, ftset, scaleSet,
         message, imageID, m)
 
 
+def extractFeatures(conn, image, scale, ftset, scaleSet,
+                    channels, zselect, tselect):
+    """
+    Extract features for the requested channel(s)
+    """
+
+    message = ''
+    imageId = image.getId()
+
+    # TODO: provide user option to only calculate if not already present
+
+    if zselect[0]:
+        zslice = image.getSizeZ() / 2
+    else:
+        if (zselect[1] < IDX_OFFSET or
+            zselect[1] >= image.getSizeZ() + IDX_OFFSET):
+            m = 'Z-slice %d not found in Image id:%d' % (zselect[1], imageId)
+            sys.stderr.write(m)
+            return message + m + '\n'
+        zslice = zselect[1] - IDX_OFFSET
+
+    if tselect[0]:
+        timepoint = image.getSizeT() / 2
+    else:
+        if (tselect[1] < IDX_OFFSET or
+            tselect[1] >= image.getSizeT() + IDX_OFFSET):
+            m = 'Timepoint %d not found in Image id:%d' % (tselect[1], imageId)
+            sys.stderr.write(m)
+            return message + m + '\n'
+        timepoint = tselect[1] - IDX_OFFSET
+
+    allChannels = channels[0]
+
+    if allChannels:
+        readoutCh = range(image.getSizeC())
+    else:
+        if (channels[1] < IDX_OFFSET or
+            channels[1] >= image.getSizeC() + IDX_OFFSET):
+            m = 'Channel %d not found in Image id:%d' % (channels[1], imageId)
+            sys.stderr.write(m)
+            return message + m
+        readoutCh = [channels[1] - IDX_OFFSET]
+
+    if ftset == 'slf33':
+        otherChs = []
+    if ftset == 'slf34':
+        if (channels[2] < IDX_OFFSET or
+            channels[2] >= image.getSizeC() + IDX_OFFSET):
+            m = 'Channel %d not found in Image id:%d' % (channels[2], imageId)
+            sys.stderr.write(m)
+            return message + m + '\n'
+        otherChs = [channels[2] - IDX_OFFSET]
+
+    for c in readoutCh:
+        chs = [c] + otherChs
+        message += extractFeaturesOneChannel(
+            conn, image, scale, ftset, scaleSet, chs, zslice, timepoint)
+
+    return message
+
+
 def processImages(client, scriptParams):
     message = ''
 
@@ -114,11 +135,12 @@ def processImages(client, scriptParams):
     ftset = scriptParams['Feature_set']
     scale = float(scriptParams['Scale'])
 
-    channels = (scriptParams['Readout_Channel'],
-                scriptParams['Reference_Channel'])
+    channels = (scriptParams['Readout_All_Channels'],
+                scriptParams['Select_Readout_Channel'],
+                scriptParams['Select_Reference_Channel'])
 
-    zselect = (scriptParams['Z_Index'], scriptParams['Select_Z'])
-    tselect = (scriptParams['Timepoint'], scriptParams['Select_T'])
+    zselect = (scriptParams['Use_Middle_Z'], scriptParams['Select_Z'])
+    tselect = (scriptParams['Use_Middle_T'], scriptParams['Select_T'])
 
     try:
         nimages = 0
@@ -201,45 +223,45 @@ def runScript():
                        values=[rstring('slf33'), rstring('slf34')],
                        default='slf33'),
 
+        scripts.Bool('Readout_All_Channels', optional=False, grouping='3',
+                     description='Which readout channel(s) to use',
+                     default=True),
+
         scripts.Long(
-            'Readout_Channel', optional=False, grouping='2',
-            description=('slf33/slf34 readout channel, starting from %d' %
+            'Select_Readout_Channel', optional=False, grouping='3.1',
+            description=('slf33/slf34 readout channel (starting from %d)' %
                          IDX_OFFSET),
             default=IDX_OFFSET),
 
         scripts.Long(
-            'Reference_Channel', optional=False, grouping='2',
+            'Select_Reference_Channel', optional=False, grouping='4',
             description=('slf34 reference channel (ignored for slf33), starting from %d' %
                          IDX_OFFSET),
             default=IDX_OFFSET + 1),
 
 
-        scripts.String('Z_Index', optional=False, grouping='3',
+        scripts.Bool('Use_Middle_Z', optional=False, grouping='5',
                        description='Which Z-slice to use',
-                       values=[rstring('Middle'), rstring('Select Index')],
-                       default='Middle'),
+                       default=True),
 
         scripts.Long(
-            'Select_Z', optional=False, grouping='3',
-            description=('Select Z index if not middle (starting from %d)' %
-                         IDX_OFFSET),
+            'Select_Z', optional=False, grouping='5.1',
+            description='Select Z index (starting from %d)' % IDX_OFFSET,
             default=-1),
 
 
-        scripts.String('Timepoint', optional=False, grouping='4',
-                       description='Which timepoint to use',
-                       values=[rstring('Middle'), rstring('Select Index')],
-                       default='Middle'),
+        scripts.Bool('Use_Middle_T', optional=False, grouping='6',
+                     description='Which timepoint to use',
+                     default=True),
 
         scripts.Long(
-            'Select_T', optional=False, grouping='4',
-            description=('Select timepoint if not middle (starting from %d)' %
-                         IDX_OFFSET),
+            'Select_T', optional=False, grouping='6.1',
+            description='Select timepoint (starting from %d)' % IDX_OFFSET,
             default=-1),
 
 
         scripts.String(
-            'Scale', optional=False, grouping='5',
+            'Scale', optional=False, grouping='7',
             description='Scale',
             default=rstring('1.0')),
 
