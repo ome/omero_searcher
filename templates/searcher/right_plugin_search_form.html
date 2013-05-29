@@ -155,24 +155,24 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
                         </td>
                         <td>
                             <div style="position:relative">
-                                {% with defZ=c.getDefaultZ defT=c.getDefaultT %}
-                                <input style="display:none" type="text" name="czt-{{ c.id }}" value="0.0.0" size="3"></input>
+                                {# with defZ=c.getDefaultZ defT=c.getDefaultT #}
+                                {% with defZ=c.defZ defT=c.defT %}
                                 <span class="cztEdit" title="Edit Channel/Z/T">0.{{ defZ }}.{{ defT }}</span>
                                 <div class="cztSelects" style="display:none">
-                                    <select title="Choose C index">
-                                        {% for i in c.getSizeC|get_range %}
+                                    <select name="selected_c-{{ c.id }}" title="Choose C index">
+                                        {% for i in c.im.getSizeC|get_range %}
                                             <option value="{{ i }}">{{ i }}</option>
                                         {% endfor %}
                                     </select>
-                                    <select title="Choose Z index">
-                                        {% for i in c.getSizeZ|get_range %}
+                                    <select name="selected_z-{{ c.id }}" title="Choose Z index">
+                                        {% for i in c.im.getSizeZ|get_range %}
                                             <option value="{{ i }}" {% ifequal i defZ %}selected='true'{% endifequal %}>
                                                 {{ i }}
                                             </option>
                                         {% endfor %}
                                     </select>
-                                    <select title="Choose T index">
-                                        {% for i in c.getSizeT|get_range %}
+                                    <select name="selected_t-{{ c.id }}" title="Choose T index">
+                                        {% for i in c.im.getSizeT|get_range %}
                                             <option value="{{ i }}" {% ifequal i defT %}selected='true'{% endifequal %}>
                                                 {{ i }}
                                             </option>
@@ -182,7 +182,7 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
                                 {% endwith %}
                             </div>
                         </td>
-                        <td>{{ c.name }}</td>
+                        <td>{{ c.im.name }}</td>
                         <td align="center">
                             <input type="radio" name="posNeg-{{ c.id }}" value="neg">
                         </td> 
