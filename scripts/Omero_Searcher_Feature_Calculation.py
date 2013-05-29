@@ -91,9 +91,10 @@ def extractFeatures(conn, image, scale, ftset, scaleSet,
 
     # Create the global contentDB
     # TODO: Implement this per-dataset level (already supported by PySLID)
-    # TODO: Set server and usernames
+    # TODO: Set servername, change update parameter from username to userid
     server = 'NA'
-    username = 'NA'
+    # Username can change, UserId should be constant
+    username = image.getOwner().getId()
     answer, m = pyslid.database.direct.update(
         conn, server, username, scale,
         imageId, pixels, channels[0], zslice, timepoint, fids, features, ftset)
