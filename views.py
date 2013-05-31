@@ -27,6 +27,15 @@ pyslid.database.direct.set_contentdb_path(omero_contentdb_path)
 import ricerca
 
 
+# Note some of these views can be called from either the standard OMERO.web
+# pages or from an OMERO.searcher page, since it is possible to iteratively
+# refine results.
+#
+# The standard web uses single image IDs whereas OMERO.searcher may need to
+# handle multiple copies of the same image with different C/Z/T, so uses a
+# superid: ImageID.PixelID.C.Z.T. We need to handle both cases.
+
+
 def getIdCztPnFromSuperIds(superIds, reqvars):
     """
     Gets the list of image IDs, CZTs, and pos/neg from the request
@@ -50,17 +59,21 @@ def getIdCztPnFromSuperIds(superIds, reqvars):
 def getIdCztPnFromImageIds(imageIds, reqvars):
     """
     Gets the list of image IDs, CZTs, and pos/neg from the request
+    IDs will be in the form of super IDs, but since the page contains fields
+    to change the CZT these may not match the original superid, so we need
+    to re-read them
     """
     idCztPn = {}
-    for iid in imageIds:
-        c = reqvars.get("selected_c-%s" % iid)
-        z = reqvars.get("selected_z-%s" % iid)
-        t = reqvars.get("selected_t-%s" % iid)
+    for sid in imageIds:
+        iid = sid.split('.')[0]
+        c = reqvars.get("selected_c-%s" % sid)
+        z = reqvars.get("selected_z-%s" % sid)
+        t = reqvars.get("selected_t-%s" % sid)
         czt = '%s.%s.%s' % (c, z, t)
-        assert(reqvars.get("posNeg-%s" % iid) in ["pos", "neg"])
-        pn = reqvars.get("posNeg-%s" % iid) == "pos"
+        assert(reqvars.get("posNeg-%s" % sid) in ["pos", "neg"])
+        pn = reqvars.get("posNeg-%s" % sid) == "pos"
         iid = int(iid)
-        logger.debug('%s %s %s', iid, reqvars.get("posNeg-%s" % iid), pn)
+        logger.debug('%s %s %s', iid, reqvars.get("posNeg-%s" % sid), pn)
         if iid in idCztPn:
             idCztPn[iid].append((czt, pn))
         else:
@@ -118,22 +131,41 @@ def right_plugin_search_form (request, conn=None, **kwargs):
     datasets.sort(key=lambda x: x.getName() and x.getName().lower())
     context['datasets'] = datasets
 
-    imageIds =  request.REQUEST.getlist('image')
     images = []
-    if len(imageIds) > 0:
-        for im in conn.getObjects("Image", imageIds):
+
+    superIds = request.REQUEST.getlist('imagesuperid')
+    if len(superIds) > 0:
+        logger.debug('superIds: %s', superIds)
+        for sid in superIds:
+            iid, px, c, z, t = map(int, sid.split('.'))
+            im = conn.getObject("Image", iid)
             images.append({
                     'im': im,
                     'id': im.id,
-                    'defC': 0,
-                    'defZ': im.getSizeZ() / 2,
-                    'defT': im.getSizeT() / 2,
+                    'superid': sid,
+                    'defC': c,
+                    'defZ': z,
+                    'defT': t,
                     })
+
+    else:
+        imageIds = request.REQUEST.getlist('image')
+        logger.debug('imageIds: %s', imageIds)
+        for im in conn.getObjects("Image", imageIds):
+            c = 0
+            z = im.getSizeZ() / 2
+            t = im.getSizeT() / 2
+            images.append({
+                    'im': im,
+                    'id': im.id,
+                    'superid': '%d.0.%d.%d.%d' % (im.id, c, z, t),
+                    'defC': c,
+                    'defZ': z,
+                    'defT': t,
+                    })
+
     context['images'] = images
     logger.debug('Context:%s', context)
-    logger.debug('Context Datasets:%s Images:%s',
-                 [x.getId() for x in datasets],
-                 [x for x in imageIds])
     return context
 
 
@@ -162,9 +194,10 @@ def searchpage( request, iIds=None, dId = None, fset = None, numret = None, negI
         idCztPn = getIdCztPnFromSuperIds(superIds, request.POST)
         imageIds = idCztPn.keys()
     else:
-        imageIds = request.POST.getlist("allIds")
-        logger.debug('Got imageIDs: %s', imageIds)
-        idCztPn = getIdCztPnFromImageIds(imageIds, request.POST)
+        allIds = request.POST.getlist("allIds")
+        logger.debug('Got allIDs: %s', allIds)
+        idCztPn = getIdCztPnFromImageIds(allIds, request.POST)
+        imageIds = idCztPn.keys()
 
     images = []
     for i in conn.getObjects("Image", imageIds):

@@ -150,28 +150,30 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
                     <tr>
                         <td class="action">
                             <img src="{% url render_thumbnail_resize 32 c.id  %}" alt="image" title="{{c.id}}"/>
-                            <input name="allIds" style="display:none" value="{{c.id}}" type="text" />
+                            <input name="allIds" style="display:none" value="{{c.superid}}" type="text" />
 
                         </td>
                         <td>
                             <div style="position:relative">
                                 {# with defZ=c.getDefaultZ defT=c.getDefaultT #}
-                                {% with defZ=c.defZ defT=c.defT %}
-                                <span class="cztEdit" title="Edit Channel/Z/T">0.{{ defZ }}.{{ defT }}</span>
+                                {% with defC=c.defC defZ=c.defZ defT=c.defT %}
+                                <span class="cztEdit" title="Edit Channel/Z/T">{{ defC }}.{{ defZ }}.{{ defT }}</span>
                                 <div class="cztSelects" style="display:none">
-                                    <select name="selected_c-{{ c.id }}" title="Choose C index">
+                                    <select name="selected_c-{{ c.superid }}" title="Choose C index">
                                         {% for i in c.im.getSizeC|get_range %}
-                                            <option value="{{ i }}">{{ i }}</option>
+                                            <option value="{{ i }}" {% ifequal i defC %}selected='true'{% endifequal %}>
+                                                {{ i }}
+                                            </option>
                                         {% endfor %}
                                     </select>
-                                    <select name="selected_z-{{ c.id }}" title="Choose Z index">
+                                    <select name="selected_z-{{ c.superid }}" title="Choose Z index">
                                         {% for i in c.im.getSizeZ|get_range %}
                                             <option value="{{ i }}" {% ifequal i defZ %}selected='true'{% endifequal %}>
                                                 {{ i }}
                                             </option>
                                         {% endfor %}
                                     </select>
-                                    <select name="selected_t-{{ c.id }}" title="Choose T index">
+                                    <select name="selected_t-{{ c.superid }}" title="Choose T index">
                                         {% for i in c.im.getSizeT|get_range %}
                                             <option value="{{ i }}" {% ifequal i defT %}selected='true'{% endifequal %}>
                                                 {{ i }}
@@ -184,10 +186,10 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
                         </td>
                         <td>{{ c.im.name }}</td>
                         <td align="center">
-                            <input type="radio" name="posNeg-{{ c.id }}" value="neg">
+                            <input type="radio" name="posNeg-{{ c.superid }}" value="neg">
                         </td> 
                         <td align="center">
-                            <input type="radio" name="posNeg-{{ c.id }}" value="pos" checked="true">
+                            <input type="radio" name="posNeg-{{ c.superid }}" value="pos" checked="true">
                         </td> 
                     </tr>
                 {% endfor %}
