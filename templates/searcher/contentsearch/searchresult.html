@@ -21,13 +21,7 @@
             </thead>
             <tbody>
                 {% for c in images %}
-                    <tr id="image-{{ c.id }}" class="{{ c.getPermsCss }}">
-		    {% comment %}
-		    TODO: This works with the Acquisition and Preview right
-		    hand tabs but not the General tab:
                     <tr id="image-{{ c.id }}-{{ c.superid }}" class="{{ c.getPermsCss }}">
-		    For now just put up with duplicate DOM IDs errors
-		    {% endcomment %}
                         <td class="action">
                             <img src="{% url render_thumbnail_resize 32 c.id  %}" alt="image" title="{{c.id}}"/>
                             <input name="superIds" style="display:none" value="{{ c.superid }}" type="text" />
