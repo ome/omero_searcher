@@ -16,6 +16,20 @@ IDX_OFFSET = 0
 
 
 
+def listExistingCZTS(conn, imageId, ftset):
+    """
+    List the available CZT and scales for features associated with an image
+    feature table.
+    Returns a list of tuples (C, Z, T, scale)
+    """
+    try:
+        ftnames, ftvalues = pyslid.features.get(
+            conn, 'vector', imageId, set=ftset)
+        return [r[1:5] for r in ftvalues]
+    except pyslid.utilities.PyslidException:
+        return []
+
+
 def extractFeaturesOneChannel(conn, image, scale, ftset, scaleSet,
                               channels, zslice, timepoint):
     """
@@ -66,7 +80,7 @@ def extractFeaturesOneChannel(conn, image, scale, ftset, scaleSet,
 
 
 def extractFeatures(conn, image, scale, ftset, scaleSet,
-                    channels, zselect, tselect):
+                    channels, zselect, tselect, recalc):
     """
     Extract features for the requested channel(s)
     """
@@ -74,7 +88,10 @@ def extractFeatures(conn, image, scale, ftset, scaleSet,
     message = ''
     imageId = image.getId()
 
-    # TODO: provide user option to only calculate if not already present
+    if recalc:
+        existing = []
+    else:
+        existing = listExistingCZTS(conn, imageId, ftset)
 
     if zselect[0]:
         zslice = image.getSizeZ() / 2
@@ -120,8 +137,13 @@ def extractFeatures(conn, image, scale, ftset, scaleSet,
 
     for c in readoutCh:
         chs = [c] + otherChs
-        message += extractFeaturesOneChannel(
-            conn, image, scale, ftset, scaleSet, chs, zslice, timepoint)
+
+        if (c, zslice, timepoint, scale) in existing:
+            message += 'Features already present for %d %d.%d.%d %e\n' % (
+                imageId, c, zslice, timepoint, scale)
+        else:
+            message += extractFeaturesOneChannel(
+                conn, image, scale, ftset, scaleSet, chs, zslice, timepoint)
 
     return message
 
@@ -133,6 +155,7 @@ def processImages(client, scriptParams):
     dataType = scriptParams['Data_Type']
     ids = scriptParams['IDs']
     ftset = scriptParams['Feature_set']
+    recalc = scriptParams['Recalculate_Existing_Features']
     scale = float(scriptParams['Scale'])
 
     channels = (scriptParams['Readout_All_Channels'],
@@ -163,7 +186,7 @@ def processImages(client, scriptParams):
                 message += 'Processing image id:%d\n' % image.getId()
                 msg = extractFeatures(
                     conn, image, scale, ftset, scaleSet,
-                    channels, zselect, tselect)
+                    channels, zselect, tselect, recalc)
                 message += msg + '\n'
 
         else:
@@ -179,7 +202,7 @@ def processImages(client, scriptParams):
                     message += 'Processing image id:%d\n' % image.getId()
                     msg = extractFeatures(
                         conn, image, scale, ftset, scaleSet,
-                        channels, zselect, tselect)
+                        channels, zselect, tselect, recalc)
                     message += msg + '\n'
 
         # Finally tidy up by removing duplicates
@@ -260,8 +283,14 @@ def runScript():
             default=-1),
 
 
+        scripts.Bool(
+            'Recalculate_Existing_Features', optional=False, grouping='7',
+            description='Recalculate features if already present',
+            default=False),
+
+
         scripts.String(
-            'Scale', optional=False, grouping='7',
+            'Scale', optional=False, grouping='8',
             description='Scale',
             default=rstring('1.0')),
 
