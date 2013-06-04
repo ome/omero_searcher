@@ -149,20 +149,19 @@
                     <tr>
                         <td class="action">
                             <img src="{% url render_thumbnail_resize 32 c.id  %}" alt="image" title="{{c.id}}"/>
-                            <input name="allIds" style="display:none" value="{{c.id}}" type="text" />
+                            <input name="superIds" style="display:none" value="{{c.superid}}" type="text" />
 
                         </td>
                         <td style="display:none"></td>
                         <td>
-                            <input style="display:none" type="text" name="czt-{{ c.id }}" value="{{ c.czt }}" size="3"></input>
                             <span id="czt-{{ c.id }}">{{ c.czt }}</span>
                         </td>
                         <td>{{ c.name }}</td>
                         <td align="center">
                             <!-- hidden input for form submission -->
-                            <input name="posNeg-{{ c.id }}" style="display:none"
+                            <input name="posNeg-{{ c.superid }}" style="display:none"
                                 value="{% if c.posNeg %}pos{% else %}neg{% endif %}" />
-                            {% if c.posNeg %}+{% else %}-{% endif %}
+                            {% if not c.hasFeats %}No features{% else %}{% if c.posNeg %}+{% else %}-{% endif %}{% endif %}
                         </td> 
                     </tr>
                 {% endfor %}
