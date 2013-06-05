@@ -21,6 +21,95 @@ from omero.rtypes import rint
 
 logger = logging.getLogger('searcher')
 
+import pyslid
+from omero_searcher_config import omero_contentdb_path
+pyslid.database.direct.set_contentdb_path(omero_contentdb_path)
+import ricerca
+
+
+# Note some of these views can be called from either the standard OMERO.web
+# pages or from an OMERO.searcher page, since it is possible to iteratively
+# refine results.
+#
+# The standard web uses single image IDs whereas OMERO.searcher may need to
+# handle multiple copies of the same image with different C/Z/T, so uses a
+# superid: ImageID.PixelID.C.Z.T. We need to handle both cases.
+
+
+def getIdCztPnFromSuperIds(superIds, reqvars):
+    """
+    Gets the list of image IDs, CZTs, and pos/neg from the request
+    Each superID must be in the form ImageID.PixelID.C.Z.T where PixelID is
+    currently ignored (set to 0)
+    """
+    idCztPn = {}
+    for sid in superIds:
+        iid, px, czt = sid.split('.', 2)
+        assert(reqvars.get("posNeg-%s" % sid) in ["pos", "neg"])
+        pn = reqvars.get("posNeg-%s" % sid) == "pos"
+        iid = int(iid)
+        logger.debug('%s %s %s', sid, reqvars.get("posNeg-%s" % sid), pn)
+        if iid in idCztPn:
+            idCztPn[iid].append((czt, pn))
+        else:
+            idCztPn[iid] = [(czt, pn)]
+    return idCztPn
+
+
+def getIdCztPnFromImageIds(imageIds, reqvars):
+    """
+    Gets the list of image IDs, CZTs, and pos/neg from the request
+    IDs will be in the form of super IDs, but since the page contains fields
+    to change the CZT these may not match the original superid, so we need
+    to re-read them
+    """
+    idCztPn = {}
+    for sid in imageIds:
+        iid = sid.split('.')[0]
+        c = reqvars.get("selected_c-%s" % sid)
+        z = reqvars.get("selected_z-%s" % sid)
+        t = reqvars.get("selected_t-%s" % sid)
+        czt = '%s.%s.%s' % (c, z, t)
+        assert(reqvars.get("posNeg-%s" % sid) in ["pos", "neg"])
+        pn = reqvars.get("posNeg-%s" % sid) == "pos"
+        iid = int(iid)
+        logger.debug('%s %s %s', iid, reqvars.get("posNeg-%s" % sid), pn)
+        if iid in idCztPn:
+            idCztPn[iid].append((czt, pn))
+        else:
+            idCztPn[iid] = [(czt, pn)]
+    return idCztPn
+
+
+def listAvailableCZTS(conn, imageId, ftset):
+    """
+    List the available CZT and scales for features associated with an image
+    feature table.
+    Returns a list of tuples (C, Z, T, scale)
+    """
+    try:
+        ftnames, ftvalues = pyslid.features.get(
+            conn, 'vector', imageId, set=ftset)
+        return [r[1:5] for r in ftvalues]
+    except pyslid.utilities.PyslidException:
+        return []
+
+
+def hasCZTFeature(available, czt):
+    """
+    Checks the list returned by listAvailbleCZTS to see if a specific CZT
+    is present.
+
+    This only checks whether features are in the associated table.
+    It does not check whether the ContentDB was updated with these features.
+    See trac #10973
+    """
+    c, z, t = czt.split('.')
+    for r in available:
+        if (int(c), int(z), int(t)) == r[:3]:
+            return True
+    return False
+
 
 @login_required()
 @render_response()
@@ -42,13 +131,41 @@ def right_plugin_search_form (request, conn=None, **kwargs):
     datasets.sort(key=lambda x: x.getName() and x.getName().lower())
     context['datasets'] = datasets
 
-    imageIds =  request.REQUEST.getlist('image')
-    if len(imageIds) > 0:
-        context['images'] = list( conn.getObjects("Image", imageIds) )
+    images = []
+
+    superIds = request.REQUEST.getlist('imagesuperid')
+    if len(superIds) > 0:
+        logger.debug('superIds: %s', superIds)
+        for sid in superIds:
+            iid, px, c, z, t = map(int, sid.split('.'))
+            im = conn.getObject("Image", iid)
+            images.append({
+                    'im': im,
+                    'id': im.id,
+                    'superid': sid,
+                    'defC': c,
+                    'defZ': z,
+                    'defT': t,
+                    })
+
+    else:
+        imageIds = request.REQUEST.getlist('image')
+        logger.debug('imageIds: %s', imageIds)
+        for im in conn.getObjects("Image", imageIds):
+            c = 0
+            z = im.getSizeZ() / 2
+            t = im.getSizeT() / 2
+            images.append({
+                    'im': im,
+                    'id': im.id,
+                    'superid': '%d.0.%d.%d.%d' % (im.id, c, z, t),
+                    'defC': c,
+                    'defZ': z,
+                    'defT': t,
+                    })
+
+    context['images'] = images
     logger.debug('Context:%s', context)
-    logger.debug('Context Datasets:%s Images:%s',
-                 [x.getId() for x in datasets],
-                 [x for x in imageIds])
     return context
 
 
@@ -71,24 +188,36 @@ def searchpage( request, iIds=None, dId = None, fset = None, numret = None, negI
     context['fset'] = request.POST.get("featureset_Name")
     context['numret'] = request.POST.get("NumRetrieve")
 
-    iIds = request.POST.getlist("allIds")
-    imageIds = [int(i) for i in iIds]
+    superIds = request.POST.getlist("superIds")
+    if superIds:
+        logger.debug('Got superIDs: %s', superIds)
+        idCztPn = getIdCztPnFromSuperIds(superIds, request.POST)
+        imageIds = idCztPn.keys()
+    else:
+        allIds = request.POST.getlist("allIds")
+        logger.debug('Got allIDs: %s', allIds)
+        idCztPn = getIdCztPnFromImageIds(allIds, request.POST)
+        imageIds = idCztPn.keys()
+
     images = []
     for i in conn.getObjects("Image", imageIds):
-        posNeg = request.POST.get("posNeg-%s" % i.id) == "pos"
-        czt = request.POST.get("czt-%s" % i.id)
-        images.append({'name':i.getName(),
-            'id':i.getId(),
-            'posNeg': posNeg,
-            'czt': czt})
-    context['images'] = images
+        available = listAvailableCZTS(conn, i.id, str(context['fset']))
+        for czt, pn in idCztPn[i.id]:
+            hasFeats = hasCZTFeature(available, czt)
+            if not hasFeats:
+                logger.debug('No features found for image: %d %s', i.id, czt)
+            images.append({
+                    'name': i.getName(),
+                    'id': i.getId(),
+                    'posNeg': pn,
+                    'czt': czt,
+                    'superid': '%d.0.%s' % (i.getId(), czt),
+                    'hasFeats': hasFeats
+                    })
+            context['images'] = images
 
     return context
 
-import pyslid
-from omero_searcher_config import omero_contentdb_path
-pyslid.database.direct.set_contentdb_path(omero_contentdb_path)
-import ricerca
 
 # import omeroweb.searcher.searchContent as searchContent   TODO: import currently failing
 @login_required()
@@ -105,58 +234,58 @@ def contentsearch( request, conn=None, **kwargs):
     numret = request.POST.get("NumRetrieve")
     numret = int(numret)
 
-    iIds = request.POST.getlist("allIds")
-    imageIds = [int(i) for i in iIds]
-    imageIDs = []
-    negimageIDs = []
-    for i in imageIds:
-        idCZT = "%s.%s" % (i, request.POST.get("czt-%s" % i))
-        if request.POST.get("posNeg-%s" % i) == "pos":
-            imageIDs.append(idCZT)
-        else:
-            negimageIDs.append(idCZT)
-
-    parameterMap = {}
-    parameterMap["posIDs"]=imageIDs
-    parameterMap["Dataset_ID"]=dId
-    parameterMap["Feature_Set_Name"]=fset
-    parameterMap["negIDs"]=negimageIDs
-    parameterMap["numret"]=numret
-
-    print parameterMap
-
+    superIds = request.POST.getlist("superIds")
+    logger.debug('Got superIDs: %s', superIds)
+    idCztPn = getIdCztPnFromSuperIds(superIds, request.POST)
+    imageIds = idCztPn.keys()
 
     ftset = request.POST.get("featureset_Name")
     image_refs_dict = {}
     for i in imageIds:
-        try:
-            logger.debug('getScales %s %s' % (i, ftset))
-            scale = pyslid.features.getScales(conn, i, str(ftset), True)[0]
-        except Exception as e:
-            logger.error(str(e))
-            raise
-        pxId = '0'
-        ipczt = "%s.%s.%s" % (i, pxId, request.POST.get("czt-%s" % i))
-        pn = 1 if request.POST.get("posNeg-%s" % i) == "pos" else -1
-        image_refs_dict[ipczt] = [(scale, ''), pn]
+        available = listAvailableCZTS(conn, i, str(fset))
+        for czt, pn in idCztPn[i]:
+            hasFeats = hasCZTFeature(available, czt)
+            if not hasFeats:
+                logger.debug('No features found for image: %d %s', i, czt)
+                continue
+
+            pxId = '0'
+            ipczt = "%s.%s.%s" % (i, pxId, czt)
+            pn = 1 if pn else -1
+
+            # TODO: Figure out which scale to choose out of multiple scales
+            # instead of just choosing the last
+            scale = available[-1][3]
+            logger.debug('Using scale: %f from image: %d', scale, i)
+            image_refs_dict[ipczt] = [(scale, ''), pn]
     logger.debug('contentsearch image_refs_dict:%s', image_refs_dict)
 
     cdb, s = pyslid.database.direct.retrieve(conn, ftset)
-    assert(s == 'Good')
+
+    if s != 'Good':
+        context = {'template':
+                       'searcher/contentsearch/search_error.html'}
+        context['message'] = (
+            'The ContentDB for feature-set %s could not be found.'
+            'Have you calculated any features?') % ftset
+        return context
 
     def processIds(cdbr):
         return ['.'.join(str(c) for c in cdbr[6:11]), cdbr[2], cdbr[1]]
 
     def processSearchSet(cdb, im_ref_dict, dscale):
+        # TODO: this is called multiple times by Ricerca- we shouldn't need to
+        # rebuild id_cdb_dict (mapping of superids to features) each time
         logger.debug('processSearchSet cdb.keys():%s', cdb.keys())
-        iid_cdb_dict = dict((k[6], k) for k in cdb[dscale])
+        id_cdb_dict = dict(
+            ('.'.join(str(c) for c in r[6:11]), r) for r in cdb[dscale])
         goodset_pos = []
 
-        logger.debug('iid_cdb_dict.keys %s', iid_cdb_dict.keys())
+        logger.debug('id_cdb_dict.keys %s', id_cdb_dict.keys())
         for id in im_ref_dict:
             iid = long(id.split('.')[0])
             logger.debug('id %s iid %s', id, iid)
-            feats = iid_cdb_dict[iid][11:]
+            feats = id_cdb_dict[id][11:]
             #logger.debug('feats %s', feats)
             goodset_pos.append([id, 1, feats])
             #logger.debug('%s', [id, 1, feats])
@@ -172,6 +301,16 @@ def contentsearch( request, conn=None, **kwargs):
     # rankingWrapper() will return duplicate results
 
     logger.debug('contentsearch cdb.keys():%s', cdb.keys())
+    if len(image_refs_dict) == 0:
+        # No images had features
+        context = {'template':
+                       'searcher/contentsearch/search_error.html'}
+        context['message'] = (
+            'No features were found for the reference images. Please use the '
+            'Omero Searcher Feature Calculation script to calculate them '
+            'before running a search.')
+        return context
+
     try:
         final_result, dscale = ricerca.content.rankingWrapper(
             cdb, image_refs_dict, processIds, processSearchSet)
@@ -179,8 +318,7 @@ def contentsearch( request, conn=None, **kwargs):
                      final_result, dscale)
     except Exception as e:
         logger.error(str(e))
-        #raise
-
+        raise
 
     im_ids_sorted = [r[0] for r in final_result]
     im_ids_sorted = im_ids_sorted[:numret]
@@ -208,6 +346,7 @@ def contentsearch( request, conn=None, **kwargs):
                 'id':iid,
                 'getPermsCss': img.getPermsCss(),
                 'ranki': ranki,
+                'superid': i,
                 'czt': czt})
     context['images'] = images
     #logger.debug('contentsearch images:%s', images)

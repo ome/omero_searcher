@@ -21,10 +21,10 @@
             </thead>
             <tbody>
                 {% for c in images %}
-                    <tr id="image-{{ c.id }}" class="{{ c.getPermsCss }}">
+                    <tr id="image-{{ c.id }}-{{ c.superid }}" class="{{ c.getPermsCss }}">
                         <td class="action">
                             <img src="{% url render_thumbnail_resize 32 c.id  %}" alt="image" title="{{c.id}}"/>
-                            <input name="allIds" style="display:none" value="{{c.id}}" type="text" />
+                            <input name="superIds" style="display:none" value="{{ c.superid }}" type="text" />
 
                         </td>
                         <td class="ranking">{{ c.ranki }}</td>
@@ -36,12 +36,12 @@
                         </td>
                         <td>{{ c.name }}</td>
                         <td align="center">
-                            <input type="radio" name="posNeg-{{ c.id }}" value="neg">
+                            <input type="radio" name="posNeg-{{ c.superid }}" value="neg">
                             <!-- 'type' span shown when we move row to left panel -->
                             <span class="posNegType" style="display:none">+</span>
                         </td> 
                         <td align="center">
-                            <input type="radio" name="posNeg-{{ c.id }}" value="pos">
+                            <input type="radio" name="posNeg-{{ c.superid }}" value="pos">
                         </td> 
                     </tr>
                 {% endfor %}
