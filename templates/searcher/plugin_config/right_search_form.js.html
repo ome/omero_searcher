@@ -7,16 +7,16 @@ $(document).ready(function() {
         load_tab_content: function(selected, obj_dtype, obj_id) {    // This MUST be defined
             var imageIds = [];
             for (var i=0; i<selected.length; i++) {
-		// IDs will be in the form image-<id> if coming from the
-		// standard middle pane, or image-<id>-<superid> if coming
-		// from the OMERO.searcher middle pane
-		var sid = selected[i]["id"].split('-');
-		if (sid.length > 2) {
-		    imageIds.push(sid[0] + 'superid=' +  sid[2]);
-		}
-		else {
-		    imageIds.push(sid.join('='));
-		}
+                // IDs will be in the form image-<id> if coming from the
+                // standard middle pane, or image-<id>-<superid> if coming
+                // from the OMERO.searcher middle pane
+                var sid = selected[i]["id"].split('-');
+                if (sid.length > 2) {
+                    imageIds.push(sid[0] + 'superid=' +  sid[2]);
+                }
+                else {
+                    imageIds.push(sid.join('='));
+                }
             }
             queryString = imageIds.join("&");
             $(this).load('{% url right_plugin_search_form %}?' + queryString);
