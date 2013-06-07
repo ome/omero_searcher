@@ -118,14 +118,14 @@ def saveToCdb(conn, ftset, cdbs):
         superids = ''.join('\t%d.%d.%d.%d.%d\n' % s for s in
                            zip(*(cdb.iid, cdb.px, cdb.c, cdb.z, cdb.t)))
 
-    if answer:
-        sys.stdout.write('Added ContentDB features (scale:%e) from:\n%s' % (
-                cdb.scale, superids))
-    else:
-        m = 'Failed to add ContentDB features (user:%d scale:%e) from:\n%s' % (
-            cdb.uid, cdb.scale, superids)
-        sys.stderr.write(m)
-        message += m
+        if answer:
+            sys.stdout.write('Added ContentDB features (scale:%e) from:\n%s' % (
+                    cdb.scale, superids))
+        else:
+            m = 'Failed to add ContentDB features (user:%d scale:%e) from:\n%s' % (
+                cdb.uid, cdb.scale, superids)
+            sys.stderr.write(m)
+            message += m
 
     return message
 
