@@ -10,7 +10,7 @@ $(document).ready(function() {
 		// IDs will be in the form image-<id> if coming from the
 		// standard middle pane, or image-<id>-<superid> if coming
 		// from the OMERO.searcher middle pane
-		sid = selected[i]["id"].split('-');
+		var sid = selected[i]["id"].split('-');
 		if (sid.length > 2) {
 		    imageIds.push(sid[0] + 'superid=' +  sid[2]);
 		}
