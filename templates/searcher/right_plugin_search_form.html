@@ -130,6 +130,22 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
             </div>
         </div>
 
+        <div>
+            <label for="limit_users">Limit to users:</label>
+            <div style="margin-left:20px">
+                <div style="float:left">
+                    <input type="checkbox" checked="true" name="limit_users" value="All">All</input>
+                </div>
+                <div style="float:left">
+                    {% for userid, username in users.items %}
+                        <input type="checkbox" checked="true" name="limit_users"
+				            value="{{userid}}">{{username}}</input>
+                    {% endfor %}
+                </div>
+                <div style="clear:both"></div>
+            </div>
+        </div>
+
         <input style="float:right" type="submit" value="Do Search"/> 
 
         <div style="clear:both"></div>

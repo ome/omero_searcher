@@ -129,6 +129,23 @@
             </select>
         </div>
 
+	<div>
+            <label for="limit_users">Limit to users:</label>
+            <div style="margin-left:20px">
+                <div style="float:left">
+                    <input type="checkbox" checked="true" name="limit_users" value="All">All</input>
+                </div>
+                <div style="float:left">
+                    {% for userid, username in users.items %}
+                        <input type="checkbox" checked="{% if userid in limit_users %}true{% else %}false{% endif %}" name="limit_users"
+			    value="{{userid}}">{{username}}</input>
+                    {% endfor %}
+                </div>
+                <div style="clear:both"></div>
+            </div>
+	</div>
+
+
         <input style="float:right" id="doSearch" type="button" value="Do Search"/> 
 
         <div style="clear:both; padding:0px"></div>
