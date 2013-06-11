@@ -208,7 +208,10 @@ def searchpage( request, iIds=None, dId = None, fset = None, numret = None, negI
         context['dataset'] = conn.getObject("Dataset", dId)
     context['fset'] = request.POST.get("featureset_Name")
     context['numret'] = request.POST.get("NumRetrieve")
-    context['limit_users'] = request.POST.getlist("limit_users")
+
+    limit_users = request.POST.getlist("limit_users")
+    limit_users = [int(x) for x in limit_users]
+    context['limit_users'] = limit_users
 
     users = getGroupMembers(conn, request)
     context['users'] = users
@@ -267,10 +270,7 @@ def contentsearch( request, conn=None, **kwargs):
             }
         return context
 
-    if 'All' in limit_users:
-        limit_users = None
-    else:
-        limit_users = [int(x) for x in limit_users]
+    limit_users = [int(x) for x in limit_users]
     logger.debug('Got limit_users: %s', limit_users)
 
     superIds = request.POST.getlist("superIds")
@@ -366,7 +366,7 @@ def contentsearch( request, conn=None, **kwargs):
     context = {'template': 'searcher/contentsearch/searchresult.html'}
 
     def filter_image(im):
-        return limit_users is None or im.getOwner().id in limit_users
+        return im.getOwner().id in limit_users
 
     def image_batch_load(conn, im_ids_sorted, numret):
         """
