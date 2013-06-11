@@ -266,7 +266,7 @@ def contentsearch( request, conn=None, **kwargs):
         context = {'template':
                        'searcher/contentsearch/search_error.html'}
         context['message'] = (
-            'The ContentDB for feature-set %s could not be found.'
+            'The ContentDB for feature-set %s could not be found. '
             'Have you calculated any features?') % ftset
         return context
 
