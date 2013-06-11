@@ -131,16 +131,15 @@
 
         <div>
             <label for="limit_users">Limit to users:</label>
-            <div style="margin-left:20px">
-                <div style="float:left">
-                    {% for userid, username in users.items %}
+            <div class="search_filter_selector">
+                {% for userid, username in users.items %}
+                    <div style="margin-left:20px">
                         <input type="checkbox"
                             {% if userid in limit_users %}checked="checked"{% endif %}
                             name="limit_users" value="{{userid}}">{{username}}
                         </input>
-                    {% endfor %}
-                </div>
-                <div style="clear:both"></div>
+                    </div>
+                {% endfor %}
             </div>
         </div>
 
