@@ -64,7 +64,26 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
             $input.val(czt);
             $span.text(czt);
         });
+
+        $('input[name="limit_users"]').change(function() {
+            if (this.value == "All") {
+                var all_checked = this.checked;
+                $('input[name="limit_users"][value!="All"]').each(function() {
+                    this.checked = all_checked;
+                });
+            }
+            else {
+                var all_checked = true;
+                $('input[name="limit_users"][value!="All"]').each(function() {
+                    all_checked = all_checked && this.checked;
+                });
+                $('input[name="limit_users"][value="All"]').
+                    prop('checked', all_checked);
+            }
+        });
+
     });    
+
 </script>
 
 <style type="text/css">
