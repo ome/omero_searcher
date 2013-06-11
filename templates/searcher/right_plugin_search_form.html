@@ -81,6 +81,19 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
             $('input[name="limit_users_all"]').prop('checked', all_checked);
         });
 
+        $(".search_filter_toggle").click(function(event){
+            event.preventDefault();
+            $(this).next().slideToggle(500, function(){
+                $(this).prev().text($(this).is(':visible')?
+                    '[\u2013] hide' : '[+] show');
+            })
+        });
+
+        // Hide by default
+        $(".search_filter_toggle").next().hide(0, function(){
+            $(this).prev().text('[+] show');
+        });
+
     });    
 
 </script>
@@ -150,6 +163,7 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
 
         <div id="search_filter_users">
             <label for="limit_users">Filter by users:</label>
+            <a href="#" title="Show/Hide" class="search_filter_toggle"></a>
             <div style="margin-left:20px" class="search_filter_selector">
                 <input type="checkbox" checked="true" name="limit_users_all" value="All">All</input>
                 <div>
