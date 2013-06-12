@@ -370,16 +370,17 @@ def contentsearch( request, conn=None, **kwargs):
 
     def image_batch_load(conn, im_ids_sorted, numret):
         """
-        We don't want to load all images, but since we'll filter out soem images
-        we don't know how many to load, so read in chunks until we have the
-        required number of images.
+        We don't want to load all images, but since we'll filter out some we
+        don't know how many to load, and it's also possible for images to
+        have been deleted but remain in the contentDB.
+        Read in chunks until we have the required number of images.
         """
         img_map = {}
 
         # We need to choose the batch size
         # Remember getObjects() returns objects in an unspecified order, so we
         # must iterate through the entire result and re-order
-        batch_size = 10
+        batch_size = numret
 
         i = 0
         while i < len(im_ids_sorted):
