@@ -43,14 +43,17 @@ def extractFeaturesOneChannel(conn, image, scale, ftset, scaleSet,
     imageId = image.getId()
     pixels = 0
 
-    message += 'Calculating features ftset:%s scale:%e c:%s z:%d t:%d\n' % (
-        ftset, scale, channels, zslice, timepoint)
+    mid = 'image:%d c:%s z:%d t:%d' % (imageId, channels, zslice, timepoint)
+
+    print 'Calculating features ftset:%s scale:%e %s' % (ftset, scale, mid)
     [fids, features, scalec] = pyslid.features.calculate(
         conn, imageId, scale, ftset, True, None,
         pixels, channels, zslice, timepoint, debug=True)
 
     if features is None:
-      return message + 'Failed Image id:%d\n' % imageId
+        m = 'Feature calculation failed for %s\n' % mid
+        sys.stderr.write(m)
+        return message + m
 
     # Create an individual OMERO.table for this image
     #print fids
@@ -60,12 +63,15 @@ def extractFeaturesOneChannel(conn, image, scale, ftset, scaleSet,
         pixels=0, channel=channels[0], zslice=zslice, timepoint=timepoint)
 
     if answer:
-        message += 'Extracted features from Image id:%d\n' % imageId
+        print 'Extracted features from %s' % mid
     else:
-       return message + 'Failed to link features to Image id:%d\n' % imageId
+        m = 'Failed to link features to %s\n' % mid
+        sys.stderr.write(m)
+        return message + m
 
     if disableCdb:
-        return message + 'ContentDB update disabled\n'
+        print 'ContentDB update disabled'
+        return message
 
     # Create the global contentDB
     # TODO: Implement this per-dataset level (already supported by PySLID)
@@ -73,14 +79,22 @@ def extractFeaturesOneChannel(conn, image, scale, ftset, scaleSet,
     server = 'NA'
     # Username can change, UserId should be constant
     username = image.getOwner().getId()
-    answer, m = pyslid.database.direct.update(
-        conn, server, username, scale,
-        imageId, pixels, channels[0], zslice, timepoint, fids, features, ftset)
-    if answer:
-        scaleSet.add(scale)
-        return message
-    return '%sFailed to update ContentDB with Image id:%d (%s)\n' (
-        message, imageID, m)
+    try:
+        answer, um = pyslid.database.direct.update(
+            conn, server, username, scale,
+            imageId, pixels, channels[0], zslice, timepoint,
+            fids, features, ftset)
+        if answer:
+            scaleSet.add(scale)
+            return message
+
+    except omero.SecurityViolation as e:
+        # Ignore e.serverStackTrace in client message
+        um = '%s %s' % (e.serverExceptionClass, e.message)
+
+    m = 'Failed to update ContentDB with %s : %s\n' % (mid, um)
+    sys.stderr.write(m)
+    return message + m
 
 
 def extractFeatures(conn, image, scale, ftset, scaleSet,
@@ -102,9 +116,9 @@ def extractFeatures(conn, image, scale, ftset, scaleSet,
     else:
         if (zselect[1] < IDX_OFFSET or
             zselect[1] >= image.getSizeZ() + IDX_OFFSET):
-            m = 'Z-slice %d not found in Image id:%d' % (zselect[1], imageId)
+            m = 'Z-slice %d not found in Image id:%d\n' % (zselect[1], imageId)
             sys.stderr.write(m)
-            return message + m + '\n'
+            return message + m
         zslice = zselect[1] - IDX_OFFSET
 
     if tselect[0]:
@@ -112,9 +126,10 @@ def extractFeatures(conn, image, scale, ftset, scaleSet,
     else:
         if (tselect[1] < IDX_OFFSET or
             tselect[1] >= image.getSizeT() + IDX_OFFSET):
-            m = 'Timepoint %d not found in Image id:%d' % (tselect[1], imageId)
+            m = 'Timepoint %d not found in Image id:%d\n' % (
+                tselect[1], imageId)
             sys.stderr.write(m)
-            return message + m + '\n'
+            return message + m
         timepoint = tselect[1] - IDX_OFFSET
 
     allChannels = channels[0]
@@ -124,7 +139,7 @@ def extractFeatures(conn, image, scale, ftset, scaleSet,
     else:
         if (channels[1] < IDX_OFFSET or
             channels[1] >= image.getSizeC() + IDX_OFFSET):
-            m = 'Channel %d not found in Image id:%d' % (channels[1], imageId)
+            m = 'Channel %d not found in Image id:%d\n' % (channels[1], imageId)
             sys.stderr.write(m)
             return message + m
         readoutCh = [channels[1] - IDX_OFFSET]
@@ -134,16 +149,16 @@ def extractFeatures(conn, image, scale, ftset, scaleSet,
     if ftset == 'slf34':
         if (channels[2] < IDX_OFFSET or
             channels[2] >= image.getSizeC() + IDX_OFFSET):
-            m = 'Channel %d not found in Image id:%d' % (channels[2], imageId)
+            m = 'Channel %d not found in Image id:%d\n' % (channels[2], imageId)
             sys.stderr.write(m)
-            return message + m + '\n'
+            return message + m
         otherChs = [channels[2] - IDX_OFFSET]
 
     for c in readoutCh:
         chs = [c] + otherChs
 
         if (c, zslice, timepoint, scale) in existing:
-            message += 'Features already present for %d %d.%d.%d %e\n' % (
+            print 'Features already present for %d %d.%d.%d (%e)' % (
                 imageId, c, zslice, timepoint, scale)
         else:
             message += extractFeaturesOneChannel(
@@ -185,9 +200,10 @@ def processImages(client, scriptParams):
 
         # Get the objects
         objects, logMessage = script_utils.getObjects(conn, scriptParams)
-        message += logMessage
+        print logMessage
 
         if not objects:
+            message += logMessage
             return message
 
         # TODO: Consider wrapping each image calculation with a trry-catch
@@ -195,7 +211,7 @@ def processImages(client, scriptParams):
 
         if dataType == 'Image':
             for image in objects:
-                message += 'Processing image id:%d\n' % image.getId()
+                print 'Processing image id:%d' % image.getId()
                 msg = extractFeatures(
                     conn, image, scale, ftset, scaleSet,
                     channels, zselect, tselect, recalc, disableCdb)
@@ -209,9 +225,9 @@ def processImages(client, scriptParams):
                 datasets = objects
 
             for d in datasets:
-                message += 'Processing dataset id:%d\n' % d.getId()
+                print 'Processing dataset id:%d' % d.getId()
                 for image in d.listChildren():
-                    message += 'Processing image id:%d\n' % image.getId()
+                    print 'Processing image id:%d' % image.getId()
                     msg = extractFeatures(
                         conn, image, scale, ftset, scaleSet,
                         channels, zselect, tselect, recalc, disableCdb)
@@ -219,12 +235,14 @@ def processImages(client, scriptParams):
 
         # Finally tidy up by removing duplicates
         for s in scaleSet:
-            message += 'Removing duplicates from scale:%g\n' % s
+            print 'Removing duplicates from scale:%g' % s
             a, msg = pyslid.database.direct.removeDuplicates(
                 conn, s, ftset, did=None)
+            print msg
             if not a:
-                message += 'Failed: '
-            message += msg + '\n'
+                m = 'Failed to remove duplicates scale:%g\n %s' % (s, msg)
+                sys.stderr.write(m)
+                message += m
 
 
     except:
@@ -327,6 +345,8 @@ def runScript():
         contact = 'icaoberg@cmu.edu',
     )
 
+    message = ''
+
     try:
         startTime = datetime.now()
         session = client.getSession()
@@ -337,15 +357,15 @@ def runScript():
         for key in client.getInputKeys():
             if client.getInput(key):
                 scriptParams[key] = client.getInput(key, unwrap=True)
-        message = str(scriptParams) + '\n'
+        print '%s' % scriptParams
 
         # Run the script
         message += processImages(client, scriptParams) + '\n'
+        print '\nMessage:\n%s\n' % message
 
         stopTime = datetime.now()
-        message += 'Duration: %s' % str(stopTime - startTime)
+        print 'Duration: %s' % (stopTime - startTime)
 
-        print message
         client.setOutput('Message', rstring(message))
 
     finally:
