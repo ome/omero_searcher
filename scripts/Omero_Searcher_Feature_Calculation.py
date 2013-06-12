@@ -31,7 +31,8 @@ def listExistingCZTS(conn, imageId, ftset):
 
 
 def extractFeaturesOneChannel(conn, image, scale, ftset, scaleSet,
-                              channels, zslice, timepoint):
+                              channels, zslice, timepoint,
+                              disableCdb):
     """
     Calculate features for one image, link to the image, save to the ContentDB.
     @param scaleSet a read write parameter, calculated scales should be
@@ -63,6 +64,9 @@ def extractFeaturesOneChannel(conn, image, scale, ftset, scaleSet,
     else:
        return message + 'Failed to link features to Image id:%d\n' % imageId
 
+    if disableCdb:
+        return message + 'ContentDB update disabled\n'
+
     # Create the global contentDB
     # TODO: Implement this per-dataset level (already supported by PySLID)
     # TODO: Set servername, change update parameter from username to userid
@@ -80,7 +84,7 @@ def extractFeaturesOneChannel(conn, image, scale, ftset, scaleSet,
 
 
 def extractFeatures(conn, image, scale, ftset, scaleSet,
-                    channels, zselect, tselect, recalc):
+                    channels, zselect, tselect, recalc, disableCdb):
     """
     Extract features for the requested channel(s)
     """
@@ -143,7 +147,8 @@ def extractFeatures(conn, image, scale, ftset, scaleSet,
                 imageId, c, zslice, timepoint, scale)
         else:
             message += extractFeaturesOneChannel(
-                conn, image, scale, ftset, scaleSet, chs, zslice, timepoint)
+                conn, image, scale, ftset, scaleSet, chs, zslice, timepoint,
+                disableCdb)
 
     return message
 
@@ -155,8 +160,6 @@ def processImages(client, scriptParams):
     dataType = scriptParams['Data_Type']
     ids = scriptParams['IDs']
     ftset = scriptParams['Feature_set']
-    recalc = scriptParams['Recalculate_Existing_Features']
-    scale = float(scriptParams['Scale'])
 
     channels = (scriptParams['Readout_All_Channels'],
                 scriptParams['Select_Readout_Channel'],
@@ -164,6 +167,15 @@ def processImages(client, scriptParams):
 
     zselect = (scriptParams['Use_Middle_Z'], scriptParams['Select_Z'])
     tselect = (scriptParams['Use_Middle_T'], scriptParams['Select_T'])
+
+    if scriptParams['Enable_Advanced_Options']:
+        recalc = scriptParams['Recalculate_Existing_Features']
+        scale = float(scriptParams['Scale'])
+        disableCdb = scriptParams['Disable_ContentDB_Update']
+    else:
+        recalc = True
+        scale = 1.0
+        disableCdb = False
 
     try:
         nimages = 0
@@ -186,7 +198,7 @@ def processImages(client, scriptParams):
                 message += 'Processing image id:%d\n' % image.getId()
                 msg = extractFeatures(
                     conn, image, scale, ftset, scaleSet,
-                    channels, zselect, tselect, recalc)
+                    channels, zselect, tselect, recalc, disableCdb)
                 message += msg + '\n'
 
         else:
@@ -202,7 +214,7 @@ def processImages(client, scriptParams):
                     message += 'Processing image id:%d\n' % image.getId()
                     msg = extractFeatures(
                         conn, image, scale, ftset, scaleSet,
-                        channels, zselect, tselect, recalc)
+                        channels, zselect, tselect, recalc, disableCdb)
                     message += msg + '\n'
 
         # Finally tidy up by removing duplicates
@@ -284,15 +296,29 @@ def runScript():
 
 
         scripts.Bool(
-            'Recalculate_Existing_Features', optional=False, grouping='7',
+            'Enable_Advanced_Options', optional=False, grouping='7',
+            description='Enable additional options for advanced users',
+            default=False),
+
+        scripts.Bool(
+            'Recalculate_Existing_Features', optional=False, grouping='7.1',
             description='Recalculate features if already present',
             default=False),
 
-
         scripts.String(
-            'Scale', optional=False, grouping='8',
+            'Scale', optional=False, grouping='7.2',
             description='Scale',
             default=rstring('1.0')),
+
+        scripts.Bool(
+            'Disable_ContentDB_Update', optional=False, grouping='7.3',
+            description=(
+                'Do not update the main features ContentDB. '
+                'This allows multiple feature calculation processes to run in '
+                'parallel. '
+                'You must run the Omero Searcher Rebuild ContentDB script '
+                'yourself once all scripts have finished.'),
+            default=False),
 
 
         version = '0.0.1',
