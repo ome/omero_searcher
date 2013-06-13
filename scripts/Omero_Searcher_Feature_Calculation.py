@@ -137,7 +137,7 @@ def extractFeatures(conn, image, scale, ftset, scaleSet,
             return message + m
         timepoint = tselect[1] - IDX_OFFSET
 
-    allChannels = channels[0]
+    allChannels = not channels[0]
 
     if allChannels:
         readoutCh = range(image.getSizeC())
@@ -181,7 +181,7 @@ def processImages(client, scriptParams):
     ids = scriptParams['IDs']
     ftset = scriptParams['Feature_set']
 
-    channels = (scriptParams['Readout_All_Channels'],
+    channels = (scriptParams['Select_Readout_Channel_instead_of_all'],
                 scriptParams['Select_Readout_Channel'],
                 scriptParams['Select_Reference_Channel'])
 
@@ -283,9 +283,11 @@ def runScript():
                        values=[rstring('slf33'), rstring('slf34')],
                        default='slf33'),
 
-        scripts.Bool('Readout_All_Channels', optional=False, grouping='3',
-                     description='Which readout channel(s) to use',
-                     default=True),
+        scripts.Bool(
+            'Select_Readout_Channel_instead_of_all',
+            optional=False, grouping='3',
+            description='Select a readout channel instead of all channels',
+            default=False),
 
         scripts.Long(
             'Select_Readout_Channel', optional=False, grouping='3.1',
