@@ -116,7 +116,7 @@ def extractFeatures(conn, image, scale, ftset, scaleSet,
     else:
         existing = listExistingCZTS(conn, imageId, ftset)
 
-    if zselect[0]:
+    if not zselect[0]:
         zslice = image.getSizeZ() / 2
     else:
         if (zselect[1] < IDX_OFFSET or
@@ -126,7 +126,7 @@ def extractFeatures(conn, image, scale, ftset, scaleSet,
             return message + m
         zslice = zselect[1] - IDX_OFFSET
 
-    if tselect[0]:
+    if not tselect[0]:
         timepoint = image.getSizeT() / 2
     else:
         if (tselect[1] < IDX_OFFSET or
@@ -185,8 +185,10 @@ def processImages(client, scriptParams):
                 scriptParams['Select_Readout_Channel'],
                 scriptParams['Select_Reference_Channel'])
 
-    zselect = (scriptParams['Use_Middle_Z'], scriptParams['Select_Z'])
-    tselect = (scriptParams['Use_Middle_T'], scriptParams['Select_T'])
+    zselect = (scriptParams['Select_Z_instead_of_middle'],
+               scriptParams['Select_Z'])
+    tselect = (scriptParams['Select_T_instead_of_middle'],
+               scriptParams['Select_T'])
 
     if scriptParams['Enable_Advanced_Options']:
         recalc = scriptParams['Recalculate_Existing_Features']
@@ -298,9 +300,10 @@ def runScript():
             default=IDX_OFFSET + 1),
 
 
-        scripts.Bool('Use_Middle_Z', optional=False, grouping='5',
-                       description='Which Z-slice to use',
-                       default=True),
+        scripts.Bool(
+            'Select_Z_instead_of_middle', optional=False, grouping='5',
+            description='Select a Z-slice instead of the default (middle)',
+            default=False),
 
         scripts.Long(
             'Select_Z', optional=False, grouping='5.1',
@@ -308,9 +311,10 @@ def runScript():
             default=-1),
 
 
-        scripts.Bool('Use_Middle_T', optional=False, grouping='6',
-                     description='Which timepoint to use',
-                     default=True),
+        scripts.Bool(
+            'Select_T_instead_of_middle', optional=False, grouping='6',
+            description='Select a timepoint instead of the default (middle)',
+            default=False),
 
         scripts.Long(
             'Select_T', optional=False, grouping='6.1',
