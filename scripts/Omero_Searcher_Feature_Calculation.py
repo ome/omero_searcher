@@ -195,7 +195,7 @@ def processImages(client, scriptParams):
         scale = float(scriptParams['Scale'])
         disableCdb = scriptParams['Disable_ContentDB_Update']
     else:
-        recalc = True
+        recalc = False
         scale = 1.0
         disableCdb = False
 
