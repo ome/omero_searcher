@@ -46,9 +46,14 @@ def extractFeaturesOneChannel(conn, image, scale, ftset, scaleSet,
     mid = 'image:%d c:%s z:%d t:%d' % (imageId, channels, zslice, timepoint)
 
     print 'Calculating features ftset:%s scale:%e %s' % (ftset, scale, mid)
-    [fids, features, scalec] = pyslid.features.calculate(
-        conn, imageId, scale, ftset, True, None,
-        pixels, channels, zslice, timepoint, debug=True)
+    try:
+        [fids, features, scalec] = pyslid.features.calculate(
+            conn, imageId, scale, ftset, True, None,
+            pixels, channels, zslice, timepoint, debug=True)
+    except pyslid.utilities.PyslidException as e:
+        m = 'Feature calculation failed for %s\nException:%s\n' % (mid, e)
+        sys.stderr.write(m)
+        return message + m
 
     if features is None:
         m = 'Feature calculation failed for %s\n' % mid
