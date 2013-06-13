@@ -308,7 +308,7 @@ def runScript():
         scripts.Long(
             'Select_Z', optional=False, grouping='5.1',
             description='Select Z index (starting from %d)' % IDX_OFFSET,
-            default=-1),
+            default=0),
 
 
         scripts.Bool(
@@ -319,7 +319,7 @@ def runScript():
         scripts.Long(
             'Select_T', optional=False, grouping='6.1',
             description='Select timepoint (starting from %d)' % IDX_OFFSET,
-            default=-1),
+            default=0),
 
 
         scripts.Bool(
