@@ -129,6 +129,21 @@
             </select>
         </div>
 
+        <div>
+            <label for="limit_users">Filter by users:</label>
+            <div class="search_filter_selector">
+                {% for userid, username in users.items %}
+                    <div style="margin-left:20px">
+                        <input type="checkbox"
+                            {% if userid in limit_users %}checked="checked"{% endif %}
+                            name="limit_users" value="{{userid}}">{{username}}
+                        </input>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+
         <input style="float:right" id="doSearch" type="button" value="Do Search"/> 
 
         <div style="clear:both; padding:0px"></div>

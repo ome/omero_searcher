@@ -64,7 +64,38 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
             $input.val(czt);
             $span.text(czt);
         });
+
+        var sfu = $('#search_filter_users');
+        sfu.find('input[name="limit_users_all"]').change(function() {
+            var all_checked = this.checked;
+            sfu.find('input[name="limit_users"]').each(function() {
+                this.checked = all_checked;
+            });
+        });
+
+        sfu.find('input[name="limit_users"]').change(function() {
+            var all_checked = true;
+            sfu.find('input[name="limit_users"]').each(function() {
+                all_checked = all_checked && this.checked;
+            });
+            $('input[name="limit_users_all"]').prop('checked', all_checked);
+        });
+
+        $(".search_filter_toggle").click(function(event){
+            event.preventDefault();
+            $(this).next().slideToggle(500, function(){
+                $(this).prev().text($(this).is(':visible')?
+                    '[\u2013] hide' : '[+] show');
+            })
+        });
+
+        // Hide by default
+        $(".search_filter_toggle").next().hide(0, function(){
+            $(this).prev().text('[+] show');
+        });
+
     });    
+
 </script>
 
 <style type="text/css">
@@ -127,6 +158,23 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
                     </select>
                 </div>
                 <div style="clear:both"></div>
+            </div>
+        </div>
+
+        <div id="search_filter_users">
+            <label for="limit_users">Filter by users:</label>
+            <a href="#" title="Show/Hide" class="search_filter_toggle"></a>
+            <div style="margin-left:20px" class="search_filter_selector">
+                <input type="checkbox" checked="true" name="limit_users_all" value="All">All</input>
+                <div>
+                    {% for userid, username in users.items %}
+                        <div style="margin-left:20px">
+                            <input type="checkbox" checked="checked"
+                                name="limit_users" value="{{userid}}"
+                                >{{ username }}</input>
+                        </div>
+                    {% endfor %}
+                </div>
             </div>
         </div>
 
