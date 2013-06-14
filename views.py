@@ -81,6 +81,23 @@ def getIdCztPnFromImageIds(imageIds, reqvars):
     return idCztPn
 
 
+def getGroupMembers(conn, request):
+    """
+    Get a list of user-ids and names
+    """
+
+    gid = conn.SERVICE_OPTS.getOmeroGroup()
+    if gid >= 0:
+        group = conn.getObject('ExperimenterGroup', gid)
+    else:
+        logger.warn('Failed to get group from SERVICE_OPTS.getOmeroGroup, using getGroupFromContext')
+        group = conn.getGroupFromContext()
+    logger.debug('group: %s', group)
+    users = dict((x.child.id.val, x.child.getOmeName().val)
+                    for x in group.copyGroupExperimenterMap())
+    return users
+
+
 def listAvailableCZTS(conn, imageId, ftset):
     """
     List the available CZT and scales for features associated with an image
@@ -118,7 +135,7 @@ def index (request, conn=None, **kwargs):
     return {'template': 'searcher/index.html'}
 
 
-@login_required()
+@login_required(setGroupContext=True)
 @render_response()
 def right_plugin_search_form (request, conn=None, **kwargs):
     """
@@ -165,11 +182,15 @@ def right_plugin_search_form (request, conn=None, **kwargs):
                     })
 
     context['images'] = images
+
+    users = getGroupMembers(conn, request)
+    context['users'] = users
+
     logger.debug('Context:%s', context)
     return context
 
 
-@login_required()
+@login_required(setGroupContext=True)
 @render_response()
 def searchpage( request, iIds=None, dId = None, fset = None, numret = None, negId = None, conn=None, **kwargs):
     """
@@ -187,6 +208,13 @@ def searchpage( request, iIds=None, dId = None, fset = None, numret = None, negI
         context['dataset'] = conn.getObject("Dataset", dId)
     context['fset'] = request.POST.get("featureset_Name")
     context['numret'] = request.POST.get("NumRetrieve")
+
+    limit_users = request.POST.getlist("limit_users")
+    limit_users = [int(x) for x in limit_users]
+    context['limit_users'] = limit_users
+
+    users = getGroupMembers(conn, request)
+    context['users'] = users
 
     superIds = request.POST.getlist("superIds")
     if superIds:
@@ -220,7 +248,7 @@ def searchpage( request, iIds=None, dId = None, fset = None, numret = None, negI
 
 
 # import omeroweb.searcher.searchContent as searchContent   TODO: import currently failing
-@login_required()
+@login_required(setGroupContext=True)
 @render_response()
 def contentsearch( request, conn=None, **kwargs):
 
@@ -233,6 +261,17 @@ def contentsearch( request, conn=None, **kwargs):
     fset = request.POST.get("featureset_Name")
     numret = request.POST.get("NumRetrieve")
     numret = int(numret)
+
+    limit_users = request.POST.getlist("limit_users")
+    if len(limit_users) == 0:
+        context = {
+            'template': 'searcher/contentsearch/search_error.html',
+            'message': 'No users selected'
+            }
+        return context
+
+    limit_users = [int(x) for x in limit_users]
+    logger.debug('Got limit_users: %s', limit_users)
 
     superIds = request.POST.getlist("superIds")
     logger.debug('Got superIDs: %s', superIds)
@@ -321,17 +360,44 @@ def contentsearch( request, conn=None, **kwargs):
         raise
 
     im_ids_sorted = [r[0] for r in final_result]
-    im_ids_sorted = im_ids_sorted[:numret]
     logger.debug('contentsearch im_ids_sorted:%s', im_ids_sorted)
 
 
     context = {'template': 'searcher/contentsearch/searchresult.html'}
 
-    imgMap = {}
-    imgIds = [int(i.split(".")[0]) for i in im_ids_sorted]
-    imgs = conn.getObjects("Image", imgIds)     # not sorted!
-    for i in imgs:
-        imgMap[i.getId()] = i
+    def filter_image(im):
+        return im.getOwner().id in limit_users
+
+    def image_batch_load(conn, im_ids_sorted, numret):
+        """
+        We don't want to load all images, but since we'll filter out some we
+        don't know how many to load, and it's also possible for images to
+        have been deleted but remain in the contentDB.
+        Read in chunks until we have the required number of images.
+        """
+        img_map = {}
+
+        # We need to choose the batch size
+        # Remember getObjects() returns objects in an unspecified order, so we
+        # must iterate through the entire result and re-order
+        batch_size = numret
+
+        i = 0
+        while i < len(im_ids_sorted):
+            batch_sids = im_ids_sorted[i:i + batch_size]
+            batch_ids = [int(id.split('.')[0]) for id in batch_sids]
+            batch_ims = conn.getObjects('Image', batch_ids)
+            i += batch_size
+
+            img_map.update((im.id, im) for im in batch_ims if filter_image(im))
+            if len(img_map) >= numret:
+                break
+
+        logger.debug('img_map:%s', img_map)
+        return img_map
+
+
+    imgMap = image_batch_load(conn, im_ids_sorted, numret)
 
     images = []
     ranki = 0
@@ -348,6 +414,8 @@ def contentsearch( request, conn=None, **kwargs):
                 'ranki': ranki,
                 'superid': i,
                 'czt': czt})
+        if ranki == numret:
+            break
     context['images'] = images
     #logger.debug('contentsearch images:%s', images)
 
