@@ -65,21 +65,23 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
             $span.text(czt);
         });
 
-        var sfu = $('#search_filter_users');
-        sfu.find('input[name="limit_users_all"]').change(function() {
+
+        $('input.search_filter_all').change(function() {
             var all_checked = this.checked;
-            sfu.find('input[name="limit_users"]').each(function() {
+            $(this).parent().find('input.search_filter_item').each(function() {
                 this.checked = all_checked;
             });
         });
 
-        sfu.find('input[name="limit_users"]').change(function() {
+        $('input.search_filter_item').change(function() {
             var all_checked = true;
-            sfu.find('input[name="limit_users"]').each(function() {
+            var parent = $(this).parent().parent()
+            parent.find('input.search_filter_item').each(function() {
                 all_checked = all_checked && this.checked;
             });
-            $('input[name="limit_users_all"]').prop('checked', all_checked);
+            parent.find('input.search_filter_all').prop('checked', all_checked);
         });
+
 
         $(".search_filter_toggle").click(function(event){
             event.preventDefault();
@@ -164,17 +166,18 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
         <div id="search_filter_users">
             <label for="limit_users">Filter by users:</label>
             <a href="#" title="Show/Hide" class="search_filter_toggle"></a>
-            <div style="margin-left:20px" class="search_filter_selector">
-                <input type="checkbox" checked="true" name="limit_users_all" value="All">All</input>
-                <div>
-                    {% for userid, username in users.items %}
-                        <div style="margin-left:20px">
-                            <input type="checkbox" checked="checked"
-                                name="limit_users" value="{{userid}}"
-                                >{{ username }}</input>
-                        </div>
-                    {% endfor %}
+            <div style="margin-left:20px">
+                <input type="checkbox" checked="true" name="limit_users_all"
+                    class="search_filter_all" value="All">All</input>
+
+                {% for userid, username in users.items %}
+                <div style="margin-left:20px">
+                    <input type="checkbox" checked="checked"
+                        class="search_filter_item"
+                        name="limit_users" value="{{userid}}"
+                        >{{ username }}</input>
                 </div>
+                {% endfor %}
             </div>
         </div>
 
