@@ -98,6 +98,23 @@ def getGroupMembers(conn, request):
     return users
 
 
+def getProjectsDatasets(conn):
+    """
+    Get a list of dataset-ids and project/dataset names
+    """
+
+    projects = dict((p.id, (p.name, {}))
+                    for p in conn.getObjects('Project', None))
+    orphanDatasets = {}
+    for d in conn.getObjects('Dataset', None):
+        if d.getParent():
+            projects[d.getParent().id][1][d.id] = d.name
+        else:
+            orphanDatasets[d.id] = d.name
+
+    return (projects, orphanDatasets)
+
+
 def listAvailableCZTS(conn, imageId, ftset):
     """
     List the available CZT and scales for features associated with an image
@@ -186,6 +203,10 @@ def right_plugin_search_form (request, conn=None, **kwargs):
     users = getGroupMembers(conn, request)
     context['users'] = users
 
+    projects, orphanDatasets = getProjectsDatasets(conn)
+    context['projects'] = projects
+    context['datasets'] = orphanDatasets
+
     logger.debug('Context:%s', context)
     return context
 
@@ -213,8 +234,16 @@ def searchpage( request, iIds=None, dId = None, fset = None, numret = None, negI
     limit_users = [int(x) for x in limit_users]
     context['limit_users'] = limit_users
 
+    limit_datasets = request.POST.getlist("limit_datasets")
+    limit_datasets = [int(x) for x in limit_datasets]
+    context['limit_datasets'] = limit_datasets
+
     users = getGroupMembers(conn, request)
     context['users'] = users
+
+    projects, orphanDatasets = getProjectsDatasets(conn)
+    context['projects'] = projects
+    context['datasets'] = orphanDatasets
 
     superIds = request.POST.getlist("superIds")
     if superIds:
@@ -272,6 +301,17 @@ def contentsearch( request, conn=None, **kwargs):
 
     limit_users = [int(x) for x in limit_users]
     logger.debug('Got limit_users: %s', limit_users)
+
+    limit_datasets = request.POST.getlist("limit_datasets")
+    if len(limit_datasets) == 0:
+        context = {
+            'template': 'searcher/contentsearch/search_error.html',
+            'message': 'No datasets selected'
+            }
+        return context
+
+    limit_datasets = [int(x) for x in limit_datasets]
+    logger.debug('Got limit_datasets: %s', limit_datasets)
 
     superIds = request.POST.getlist("superIds")
     logger.debug('Got superIDs: %s', superIds)

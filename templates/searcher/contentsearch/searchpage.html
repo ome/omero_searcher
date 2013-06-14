@@ -143,6 +143,23 @@
             </div>
         </div>
 
+        <div>
+            <label for="limit_datasets">Filter by users:</label>
+            <div class="search_filter_selector">
+                {% for projectid, projectdata in projects.items %}
+                    {% for dsid, dsname in projectdata.1.items %}
+                    <div style="margin-left:20px">
+                        <input type="checkbox"
+                            {% if dsid in limit_datasets %}checked="checked"{% endif %}
+                            name="limit_datasets"
+			    value="{{dsid}}">{{projectdata.0}}/{{dsname}}
+                        </input>
+                    </div>
+                    {% endfor %}
+                {% endfor %}
+            </div>
+        </div>
+
 
         <input style="float:right" id="doSearch" type="button" value="Do Search"/> 
 
