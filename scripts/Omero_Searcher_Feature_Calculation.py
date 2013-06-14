@@ -31,7 +31,8 @@ def listExistingCZTS(conn, imageId, ftset):
 
 
 def extractFeaturesOneChannel(conn, image, scale, ftset, scaleSet,
-                              channels, zslice, timepoint):
+                              channels, zslice, timepoint,
+                              disableCdb):
     """
     Calculate features for one image, link to the image, save to the ContentDB.
     @param scaleSet a read write parameter, calculated scales should be
@@ -42,14 +43,22 @@ def extractFeaturesOneChannel(conn, image, scale, ftset, scaleSet,
     imageId = image.getId()
     pixels = 0
 
-    message += 'Calculating features ftset:%s scale:%e c:%s z:%d t:%d\n' % (
-        ftset, scale, channels, zslice, timepoint)
-    [fids, features, scalec] = pyslid.features.calculate(
-        conn, imageId, scale, ftset, True, None,
-        pixels, channels, zslice, timepoint, debug=True)
+    mid = 'image:%d c:%s z:%d t:%d' % (imageId, channels, zslice, timepoint)
+
+    print 'Calculating features ftset:%s scale:%e %s' % (ftset, scale, mid)
+    try:
+        [fids, features, scalec] = pyslid.features.calculate(
+            conn, imageId, scale, ftset, True, None,
+            pixels, channels, zslice, timepoint, debug=True)
+    except pyslid.utilities.PyslidException as e:
+        m = 'Feature calculation failed for %s\nException:%s\n' % (mid, e)
+        sys.stderr.write(m)
+        return message + m
 
     if features is None:
-      return message + 'Failed Image id:%d\n' % imageId
+        m = 'Feature calculation failed for %s\n' % mid
+        sys.stderr.write(m)
+        return message + m
 
     # Create an individual OMERO.table for this image
     #print fids
@@ -59,9 +68,15 @@ def extractFeaturesOneChannel(conn, image, scale, ftset, scaleSet,
         pixels=0, channel=channels[0], zslice=zslice, timepoint=timepoint)
 
     if answer:
-        message += 'Extracted features from Image id:%d\n' % imageId
+        print 'Extracted features from %s' % mid
     else:
-       return message + 'Failed to link features to Image id:%d\n' % imageId
+        m = 'Failed to link features to %s\n' % mid
+        sys.stderr.write(m)
+        return message + m
+
+    if disableCdb:
+        print 'ContentDB update disabled'
+        return message
 
     # Create the global contentDB
     # TODO: Implement this per-dataset level (already supported by PySLID)
@@ -69,18 +84,26 @@ def extractFeaturesOneChannel(conn, image, scale, ftset, scaleSet,
     server = 'NA'
     # Username can change, UserId should be constant
     username = image.getOwner().getId()
-    answer, m = pyslid.database.direct.update(
-        conn, server, username, scale,
-        imageId, pixels, channels[0], zslice, timepoint, fids, features, ftset)
-    if answer:
-        scaleSet.add(scale)
-        return message
-    return '%sFailed to update ContentDB with Image id:%d (%s)\n' (
-        message, imageID, m)
+    try:
+        answer, um = pyslid.database.direct.update(
+            conn, server, username, scale,
+            imageId, pixels, channels[0], zslice, timepoint,
+            fids, features, ftset)
+        if answer:
+            scaleSet.add(scale)
+            return message
+
+    except omero.SecurityViolation as e:
+        # Ignore e.serverStackTrace in client message
+        um = '%s %s' % (e.serverExceptionClass, e.message)
+
+    m = 'Failed to update ContentDB with %s : %s\n' % (mid, um)
+    sys.stderr.write(m)
+    return message + m
 
 
 def extractFeatures(conn, image, scale, ftset, scaleSet,
-                    channels, zselect, tselect, recalc):
+                    channels, zselect, tselect, recalc, disableCdb):
     """
     Extract features for the requested channel(s)
     """
@@ -93,34 +116,35 @@ def extractFeatures(conn, image, scale, ftset, scaleSet,
     else:
         existing = listExistingCZTS(conn, imageId, ftset)
 
-    if zselect[0]:
+    if not zselect[0]:
         zslice = image.getSizeZ() / 2
     else:
         if (zselect[1] < IDX_OFFSET or
             zselect[1] >= image.getSizeZ() + IDX_OFFSET):
-            m = 'Z-slice %d not found in Image id:%d' % (zselect[1], imageId)
+            m = 'Z-slice %d not found in Image id:%d\n' % (zselect[1], imageId)
             sys.stderr.write(m)
-            return message + m + '\n'
+            return message + m
         zslice = zselect[1] - IDX_OFFSET
 
-    if tselect[0]:
+    if not tselect[0]:
         timepoint = image.getSizeT() / 2
     else:
         if (tselect[1] < IDX_OFFSET or
             tselect[1] >= image.getSizeT() + IDX_OFFSET):
-            m = 'Timepoint %d not found in Image id:%d' % (tselect[1], imageId)
+            m = 'Timepoint %d not found in Image id:%d\n' % (
+                tselect[1], imageId)
             sys.stderr.write(m)
-            return message + m + '\n'
+            return message + m
         timepoint = tselect[1] - IDX_OFFSET
 
-    allChannels = channels[0]
+    allChannels = not channels[0]
 
     if allChannels:
         readoutCh = range(image.getSizeC())
     else:
         if (channels[1] < IDX_OFFSET or
             channels[1] >= image.getSizeC() + IDX_OFFSET):
-            m = 'Channel %d not found in Image id:%d' % (channels[1], imageId)
+            m = 'Channel %d not found in Image id:%d\n' % (channels[1], imageId)
             sys.stderr.write(m)
             return message + m
         readoutCh = [channels[1] - IDX_OFFSET]
@@ -130,20 +154,21 @@ def extractFeatures(conn, image, scale, ftset, scaleSet,
     if ftset == 'slf34':
         if (channels[2] < IDX_OFFSET or
             channels[2] >= image.getSizeC() + IDX_OFFSET):
-            m = 'Channel %d not found in Image id:%d' % (channels[2], imageId)
+            m = 'Channel %d not found in Image id:%d\n' % (channels[2], imageId)
             sys.stderr.write(m)
-            return message + m + '\n'
+            return message + m
         otherChs = [channels[2] - IDX_OFFSET]
 
     for c in readoutCh:
         chs = [c] + otherChs
 
         if (c, zslice, timepoint, scale) in existing:
-            message += 'Features already present for %d %d.%d.%d %e\n' % (
+            print 'Features already present for %d %d.%d.%d (%e)' % (
                 imageId, c, zslice, timepoint, scale)
         else:
             message += extractFeaturesOneChannel(
-                conn, image, scale, ftset, scaleSet, chs, zslice, timepoint)
+                conn, image, scale, ftset, scaleSet, chs, zslice, timepoint,
+                disableCdb)
 
     return message
 
@@ -155,15 +180,24 @@ def processImages(client, scriptParams):
     dataType = scriptParams['Data_Type']
     ids = scriptParams['IDs']
     ftset = scriptParams['Feature_set']
-    recalc = scriptParams['Recalculate_Existing_Features']
-    scale = float(scriptParams['Scale'])
 
-    channels = (scriptParams['Readout_All_Channels'],
+    channels = (scriptParams['Select_Readout_Channel_instead_of_all'],
                 scriptParams['Select_Readout_Channel'],
                 scriptParams['Select_Reference_Channel'])
 
-    zselect = (scriptParams['Use_Middle_Z'], scriptParams['Select_Z'])
-    tselect = (scriptParams['Use_Middle_T'], scriptParams['Select_T'])
+    zselect = (scriptParams['Select_Z_instead_of_middle'],
+               scriptParams['Select_Z'])
+    tselect = (scriptParams['Select_T_instead_of_middle'],
+               scriptParams['Select_T'])
+
+    if scriptParams['Enable_Advanced_Options']:
+        recalc = scriptParams['Recalculate_Existing_Features']
+        scale = float(scriptParams['Scale'])
+        disableCdb = scriptParams['Disable_ContentDB_Update']
+    else:
+        recalc = False
+        scale = 1.0
+        disableCdb = False
 
     try:
         nimages = 0
@@ -173,9 +207,10 @@ def processImages(client, scriptParams):
 
         # Get the objects
         objects, logMessage = script_utils.getObjects(conn, scriptParams)
-        message += logMessage
+        print logMessage
 
         if not objects:
+            message += logMessage
             return message
 
         # TODO: Consider wrapping each image calculation with a trry-catch
@@ -183,10 +218,10 @@ def processImages(client, scriptParams):
 
         if dataType == 'Image':
             for image in objects:
-                message += 'Processing image id:%d\n' % image.getId()
+                print 'Processing image id:%d' % image.getId()
                 msg = extractFeatures(
                     conn, image, scale, ftset, scaleSet,
-                    channels, zselect, tselect, recalc)
+                    channels, zselect, tselect, recalc, disableCdb)
                 message += msg + '\n'
 
         else:
@@ -197,22 +232,24 @@ def processImages(client, scriptParams):
                 datasets = objects
 
             for d in datasets:
-                message += 'Processing dataset id:%d\n' % d.getId()
+                print 'Processing dataset id:%d' % d.getId()
                 for image in d.listChildren():
-                    message += 'Processing image id:%d\n' % image.getId()
+                    print 'Processing image id:%d' % image.getId()
                     msg = extractFeatures(
                         conn, image, scale, ftset, scaleSet,
-                        channels, zselect, tselect, recalc)
+                        channels, zselect, tselect, recalc, disableCdb)
                     message += msg + '\n'
 
         # Finally tidy up by removing duplicates
         for s in scaleSet:
-            message += 'Removing duplicates from scale:%g\n' % s
+            print 'Removing duplicates from scale:%g' % s
             a, msg = pyslid.database.direct.removeDuplicates(
                 conn, s, ftset, did=None)
+            print msg
             if not a:
-                message += 'Failed: '
-            message += msg + '\n'
+                m = 'Failed to remove duplicates scale:%g\n %s' % (s, msg)
+                sys.stderr.write(m)
+                message += m
 
 
     except:
@@ -246,9 +283,11 @@ def runScript():
                        values=[rstring('slf33'), rstring('slf34')],
                        default='slf33'),
 
-        scripts.Bool('Readout_All_Channels', optional=False, grouping='3',
-                     description='Which readout channel(s) to use',
-                     default=True),
+        scripts.Bool(
+            'Select_Readout_Channel_instead_of_all',
+            optional=False, grouping='3',
+            description='Select a readout channel instead of all channels',
+            default=False),
 
         scripts.Long(
             'Select_Readout_Channel', optional=False, grouping='3.1',
@@ -263,36 +302,52 @@ def runScript():
             default=IDX_OFFSET + 1),
 
 
-        scripts.Bool('Use_Middle_Z', optional=False, grouping='5',
-                       description='Which Z-slice to use',
-                       default=True),
+        scripts.Bool(
+            'Select_Z_instead_of_middle', optional=False, grouping='5',
+            description='Select a Z-slice instead of the default (middle)',
+            default=False),
 
         scripts.Long(
             'Select_Z', optional=False, grouping='5.1',
             description='Select Z index (starting from %d)' % IDX_OFFSET,
-            default=-1),
+            default=0),
 
 
-        scripts.Bool('Use_Middle_T', optional=False, grouping='6',
-                     description='Which timepoint to use',
-                     default=True),
+        scripts.Bool(
+            'Select_T_instead_of_middle', optional=False, grouping='6',
+            description='Select a timepoint instead of the default (middle)',
+            default=False),
 
         scripts.Long(
             'Select_T', optional=False, grouping='6.1',
             description='Select timepoint (starting from %d)' % IDX_OFFSET,
-            default=-1),
+            default=0),
 
 
         scripts.Bool(
-            'Recalculate_Existing_Features', optional=False, grouping='7',
+            'Enable_Advanced_Options', optional=False, grouping='7',
+            description='Enable additional options for advanced users',
+            default=False),
+
+        scripts.Bool(
+            'Recalculate_Existing_Features', optional=False, grouping='7.1',
             description='Recalculate features if already present',
             default=False),
 
-
         scripts.String(
-            'Scale', optional=False, grouping='8',
+            'Scale', optional=False, grouping='7.2',
             description='Scale',
             default=rstring('1.0')),
+
+        scripts.Bool(
+            'Disable_ContentDB_Update', optional=False, grouping='7.3',
+            description=(
+                'Do not update the main features ContentDB. '
+                'This allows multiple feature calculation processes to run in '
+                'parallel. '
+                'You must run the Omero Searcher Rebuild ContentDB script '
+                'yourself once all scripts have finished.'),
+            default=False),
 
 
         version = '0.0.1',
@@ -300,6 +355,8 @@ def runScript():
         institutions = ['Carnegie Mellon University'],
         contact = 'icaoberg@cmu.edu',
     )
+
+    message = ''
 
     try:
         startTime = datetime.now()
@@ -311,15 +368,15 @@ def runScript():
         for key in client.getInputKeys():
             if client.getInput(key):
                 scriptParams[key] = client.getInput(key, unwrap=True)
-        message = str(scriptParams) + '\n'
+        print '%s' % scriptParams
 
         # Run the script
         message += processImages(client, scriptParams) + '\n'
+        print '\nMessage:\n%s\n' % message
 
         stopTime = datetime.now()
-        message += 'Duration: %s' % str(stopTime - startTime)
+        print 'Duration: %s' % (stopTime - startTime)
 
-        print message
         client.setOutput('Message', rstring(message))
 
     finally:
