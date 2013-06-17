@@ -93,30 +93,9 @@
     <form id="content_search" class="content_search" method="POST" action="{% url contentsearch %}">
 
         <div>
-            <table class="bk_table">
-                <thead> 
-                    <tr> 
-                        <th width=50%>{% trans "Featureset name" %}</th> 
-                        <th width=50%>{% trans "Dataset" %}</th> 
-                    </tr> 
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>
-                            <input name="featureset_Name" value="{{ fset }}" style="display:none"/>
-                            {{ fset }}
-                        </td>
-                        <td>
-                            {% if dataset %}
-                                {{ dataset.getId }}: {{ dataset.getName }}
-                                <input name="dataset_ID" value="{{ dataset.getId }}" style="display:none"/>
-                            {% else %}
-                                Entire DB
-                            {% endif %}
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+            <label>Feature-set:</label>
+            <input name="featureset_Name" value="{{ fset }}" type="hidden" />
+            {{ fset }}
         </div>
 
         <div>

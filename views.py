@@ -174,10 +174,6 @@ def right_plugin_search_form (request, conn=None, **kwargs):
     """
     context = {'template': 'searcher/right_plugin_search_form.html'}
 
-    datasets = list(conn.getObjects("Dataset"))
-    datasets.sort(key=lambda x: x.getName() and x.getName().lower())
-    context['datasets'] = datasets
-
     images = []
 
     superIds = request.REQUEST.getlist('imagesuperid')
