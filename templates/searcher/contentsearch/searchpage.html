@@ -166,14 +166,14 @@
         </div>
 
         <div>
-            <label for="limit_channels">Filter by channels:</label>
+            <label for="limit_channelidxs">Filter by channel indices:</label>
             <a href="#" title="Show/Hide" class="search_refine_toggle"></a>
             <div class="search_filter_selector">
-                {% for chid, chname in channels.items %}
+                {% for chid, chname in channelidxs.items %}
                     <div style="margin-left:20px">
                         <input type="checkbox"
-                            {% if chid in limit_channels %}checked="checked"{% endif %}
-                            name="limit_channels" value="{{chid}}">{{chname}}
+                            {% if chid in limit_channelidxs %}checked="checked"{% endif %}
+                            name="limit_channelidxs" value="{{chid}}">{{chname}}
                         </input>
                     </div>
                 {% endfor %}

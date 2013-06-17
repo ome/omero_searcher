@@ -200,17 +200,17 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
         </div>
 
         <div id="search_filter_users">
-            <label for="limit_channels">Filter by channels:</label>
+            <label for="limit_channelidxs">Filter by channel index:</label>
             <a href="#" title="Show/Hide" class="search_filter_toggle"></a>
             <div style="margin-left:20px">
-                <input type="checkbox" checked="true" name="limit_channels_all"
+                <input type="checkbox" checked="true" name="limit_channelidxs_all"
                     class="search_filter_all" value="All">All</input>
 
-                {% for chid, chname in channels.items %}
+                {% for chid, chname in channelidxs.items %}
                 <div style="margin-left:20px">
                     <input type="checkbox" checked="checked"
                         class="search_filter_item"
-                        name="limit_channels" value="{{chid}}"
+                        name="limit_channelidxs" value="{{chid}}"
                         >{{ chname }}</input>
                 </div>
                 {% endfor %}
