@@ -35,6 +35,22 @@
                 },
             })
             .submit();  // on initial load, do first search by submitting immediately
+
+
+            $(".search_refine_toggle").click(function(event){
+                event.preventDefault();
+                $(this).next().slideToggle(500, function(){
+                    $(this).prev().text($(this).is(':visible')?
+                        '[\u2013] hide' : '[+] show');
+                })
+            });
+
+            // Hide by default
+
+            $(".search_refine_toggle").next().hide(0, function(){
+                $(this).prev().text('[+] show');
+            });
+
         });
 
     </script>
@@ -110,6 +126,7 @@
 
         <div>
             <label for="limit_users">Filter by users:</label>
+            <a href="#" title="Show/Hide" class="search_refine_toggle"></a>
             <div class="search_filter_selector">
                 {% for userid, username in users.items %}
                     <div style="margin-left:20px">
@@ -124,6 +141,7 @@
 
         <div>
             <label for="limit_datasets">Filter by datasets:</label>
+            <a href="#" title="Show/Hide" class="search_refine_toggle"></a>
             <div class="search_filter_selector">
                 {% for projectid, projectdata in projects.items %}
                     {% for dsid, dsname in projectdata.1.items %}
@@ -149,6 +167,7 @@
 
         <div>
             <label for="limit_channels">Filter by channels:</label>
+            <a href="#" title="Show/Hide" class="search_refine_toggle"></a>
             <div class="search_filter_selector">
                 {% for chid, chname in channels.items %}
                     <div style="margin-left:20px">
