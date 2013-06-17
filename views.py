@@ -144,6 +144,39 @@ def getChannelIndices(conn):
     return channels
 
 
+UNNAMED_CHANNEL = '[No channel name]'
+
+def getChannelNames(conn):
+    """
+    Hard code now, to save having to load the ContentDB
+    TODO: Figure out how to get a useful list of available channels
+    """
+    qs = conn.getQueryService()
+    query = 'select distinct lc.name from LogicalChannel lc order by lc.name'
+    channels = qs.projection(query, None, conn.SERVICE_OPTS)
+    channels = [c[0].val if c else UNNAMED_CHANNEL for c in channels]
+    channels = [(c, c) for c in channels]
+    return channels
+
+
+def getImageChannelMap(conn):
+    imChMap = defaultdict(list)
+    qs = conn.getQueryService()
+    query = ('select p from Pixels p join '
+             'fetch p.channels as c join '
+             'fetch c.logicalChannel as lc')
+    ps = qs.findAllByQuery(query, None, conn.SERVICE_OPTS)
+    for p in ps:
+        for c in xrange(p.getSizeC().val):
+            cname = p.getChannel(c).getLogicalChannel(c).getName()
+            if cname is None:
+                cname = UNNAMED_CHANNEL
+            else:
+                cname = cname.val
+            imChMap[p.getImage().id.val].append(cname)
+    return imChMap
+
+
 def listAvailableCZTS(conn, imageId, ftset):
     """
     List the available CZT and scales for features associated with an image
@@ -233,6 +266,7 @@ def right_plugin_search_form (request, conn=None, **kwargs):
     context['datasets'] = orphanDatasets
 
     context['channelidxs'] = getChannelIndices(conn)
+    context['channelnames'] = getChannelNames(conn)
 
     logger.debug('Context:%s', context)
     return context
@@ -269,6 +303,10 @@ def searchpage( request, iIds=None, dId = None, fset = None, numret = None, negI
     limit_channelidxs = [int(x) for x in limit_channelidxs]
     context['limit_channelidxs'] = limit_channelidxs
 
+    limit_channelnames = request.POST.getlist("limit_channelnames")
+    limit_channelnames = set(limit_channelnames)
+    context['limit_channelnames'] = limit_channelnames
+
     users = getGroupMembers(conn)
     context['users'] = users
 
@@ -277,6 +315,7 @@ def searchpage( request, iIds=None, dId = None, fset = None, numret = None, negI
     context['datasets'] = orphanDatasets
 
     context['channelidxs'] = getChannelIndices(conn)
+    context['channelnames'] = getChannelNames(conn)
 
     superIds = request.POST.getlist("superIds")
     if superIds:
@@ -348,6 +387,7 @@ def contentsearch( request, conn=None, **kwargs):
 
     # TODO: Optimise, this is slow
     imDsMap = getImageDatasetMap(conn)
+    imChMap = getImageChannelMap(conn)
 
     limit_channelidxs = request.POST.getlist("limit_channelidxs")
     if len(limit_channelidxs) == 0:
@@ -359,6 +399,17 @@ def contentsearch( request, conn=None, **kwargs):
 
     limit_channelidxs = set(int(x) for x in limit_channelidxs)
     logger.debug('Got limit_channelidxs: %s', limit_channelidxs)
+
+    limit_channelnames = request.POST.getlist("limit_channelnames")
+    if len(limit_channelnames) == 0:
+        context = {
+            'template': 'searcher/contentsearch/search_error.html',
+            'message': 'No channel names selected'
+            }
+        return context
+
+    limit_channelnames = set(limit_channelnames)
+    logger.debug('Got limit_channelnames: %s', limit_channelnames)
 
 
     superIds = request.POST.getlist("superIds")
@@ -470,7 +521,12 @@ def contentsearch( request, conn=None, **kwargs):
         if im.getOwner().id not in limit_users:
             return False
         # http://stackoverflow.com/a/2197506
-        return any(ld in limit_datasets for ld in imDsMap[im.id])
+        if not any(ld in limit_datasets for ld in imDsMap[im.id]):
+            return False
+        # TODO: need to get ch index from super id, then check channel name
+        #if not any(lc in limit_channelnames for lc in imChMap[im.id]):
+        #    return False
+        return True
 
     def image_batch_load(conn, im_ids_sorted, numret):
         """

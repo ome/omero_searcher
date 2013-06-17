@@ -180,6 +180,21 @@
             </div>
         </div>
 
+        <div>
+            <label for="limit_channelnames">Filter by channel names:</label>
+            <a href="#" title="Show/Hide" class="search_refine_toggle"></a>
+            <div class="search_filter_selector">
+                {% for ch in channelnames %}
+                    <div style="margin-left:20px">
+                        <input type="checkbox"
+                            {% if ch.0 in limit_channelnames %}checked="checked"{% endif %}
+                            name="limit_channelnames" value="{{ch.0}}">{{ch.1}}
+                        </input>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
 
         <input style="float:right" id="doSearch" type="button" value="Do Search"/> 
 

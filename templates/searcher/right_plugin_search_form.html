@@ -217,6 +217,25 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
             </div>
         </div>
 
+        <div id="search_filter_channelnames">
+            <label for="limit_channelnames">Filter by channel name:</label>
+            <a href="#" title="Show/Hide" class="search_filter_toggle"></a>
+            <div style="margin-left:20px">
+                <input type="checkbox" checked="true" name="limit_channelnames_all"
+                    class="search_filter_all" value="All">All</input>
+
+                {% for ch in channelnames %}
+                <div style="margin-left:20px">
+                    <input type="checkbox" checked="checked"
+                        class="search_filter_item"
+                        name="limit_channelnames" value="{{ch.0}}"
+                        >{{ ch.1 }}</input>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+
         <input style="float:right" type="submit" value="Do Search"/> 
 
         <div style="clear:both"></div>
