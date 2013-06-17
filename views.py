@@ -10,6 +10,7 @@
 #
 
 import logging
+from collections import defaultdict
 
 from omeroweb.webclient.decorators import login_required, render_response
 from webclient.webclient_gateway import OmeroWebGateway
@@ -113,6 +114,18 @@ def getProjectsDatasets(conn):
             orphanDatasets[d.id] = d.name
 
     return (projects, orphanDatasets)
+
+
+def getImageDatasetMap(conn):
+    """
+    It should be quicker to build a one-off mapping of images to datasets
+    than it is to call im.listParents() on every image
+    """
+    imDsMap = defaultdict(list)
+    for d in conn.getObjects('Dataset', None):
+        for i in d.listChildren():
+            imDsMap[i.id].append(d.id)
+    return imDsMap
 
 
 def listAvailableCZTS(conn, imageId, ftset):
@@ -299,7 +312,7 @@ def contentsearch( request, conn=None, **kwargs):
             }
         return context
 
-    limit_users = [int(x) for x in limit_users]
+    limit_users = set(int(x) for x in limit_users)
     logger.debug('Got limit_users: %s', limit_users)
 
     limit_datasets = request.POST.getlist("limit_datasets")
@@ -310,8 +323,11 @@ def contentsearch( request, conn=None, **kwargs):
             }
         return context
 
-    limit_datasets = [int(x) for x in limit_datasets]
+    limit_datasets = set(int(x) for x in limit_datasets)
     logger.debug('Got limit_datasets: %s', limit_datasets)
+
+    # TODO: Optimise, this is slow
+    imDsMap = getImageDatasetMap(conn)
 
     superIds = request.POST.getlist("superIds")
     logger.debug('Got superIDs: %s', superIds)
@@ -406,7 +422,10 @@ def contentsearch( request, conn=None, **kwargs):
     context = {'template': 'searcher/contentsearch/searchresult.html'}
 
     def filter_image(im):
-        return im.getOwner().id in limit_users
+        if im.getOwner().id not in limit_users:
+            return False
+        # http://stackoverflow.com/a/2197506
+        return any(ld in limit_datasets for ld in imDsMap[im.id])
 
     def image_batch_load(conn, im_ids_sorted, numret):
         """

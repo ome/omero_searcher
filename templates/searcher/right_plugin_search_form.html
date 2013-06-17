@@ -203,6 +203,20 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
                 </div>
                 {% endfor %}
 
+                <div>
+                    <input type="checkbox" checked="checked"
+                        class="search_filter_all" name="project"
+                        value="[No project]">[No project]</input>
+
+                    {% for dsid, dsname in datasets.items %}
+                    <div style="margin-left:20px">
+                        <input type="checkbox" checked="checked"
+                            class="search_filter_item" name="limit_datasets"
+                            value="{{dsid}}">{{ dsname }}</input>
+                    </div>
+                    {% endfor %}
+                </div>
+
             </div>
         </div>
 
