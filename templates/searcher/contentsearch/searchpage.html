@@ -147,6 +147,20 @@
             </div>
         </div>
 
+        <div>
+            <label for="limit_channels">Filter by channels:</label>
+            <div class="search_filter_selector">
+                {% for chid, chname in channels.items %}
+                    <div style="margin-left:20px">
+                        <input type="checkbox"
+                            {% if chid in limit_channels %}checked="checked"{% endif %}
+                            name="limit_channels" value="{{chid}}">{{chname}}
+                        </input>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
 
         <input style="float:right" id="doSearch" type="button" value="Do Search"/> 
 

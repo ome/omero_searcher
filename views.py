@@ -128,6 +128,15 @@ def getImageDatasetMap(conn):
     return imDsMap
 
 
+def getAvailableChannels(conn):
+    """
+    Hard code now, to save having to load the ContentDB
+    TODO: Figure out how to get a useful list of available channels
+    """
+    channels = dict((c, str(c)) for c in range(10))
+    return channels
+
+
 def listAvailableCZTS(conn, imageId, ftset):
     """
     List the available CZT and scales for features associated with an image
@@ -216,6 +225,9 @@ def right_plugin_search_form (request, conn=None, **kwargs):
     context['projects'] = projects
     context['datasets'] = orphanDatasets
 
+    # Note: List of channels is currently hardcoded
+    context['channels'] = getAvailableChannels(conn)
+
     logger.debug('Context:%s', context)
     return context
 
@@ -247,12 +259,18 @@ def searchpage( request, iIds=None, dId = None, fset = None, numret = None, negI
     limit_datasets = [int(x) for x in limit_datasets]
     context['limit_datasets'] = limit_datasets
 
+    limit_channels = request.POST.getlist("limit_channels")
+    limit_channels = [int(x) for x in limit_channels]
+    context['limit_channels'] = limit_channels
+
     users = getGroupMembers(conn, request)
     context['users'] = users
 
     projects, orphanDatasets = getProjectsDatasets(conn)
     context['projects'] = projects
     context['datasets'] = orphanDatasets
+
+    context['channels'] = getAvailableChannels(conn)
 
     superIds = request.POST.getlist("superIds")
     if superIds:
@@ -324,6 +342,18 @@ def contentsearch( request, conn=None, **kwargs):
 
     # TODO: Optimise, this is slow
     imDsMap = getImageDatasetMap(conn)
+
+    limit_channels = request.POST.getlist("limit_channels")
+    if len(limit_channels) == 0:
+        context = {
+            'template': 'searcher/contentsearch/search_error.html',
+            'message': 'No channels selected'
+            }
+        return context
+
+    limit_channels = set(int(x) for x in limit_channels)
+    logger.debug('Got limit_channels: %s', limit_channels)
+
 
     superIds = request.POST.getlist("superIds")
     logger.debug('Got superIDs: %s', superIds)
@@ -413,6 +443,19 @@ def contentsearch( request, conn=None, **kwargs):
 
     im_ids_sorted = [r[0] for r in final_result]
     logger.debug('contentsearch im_ids_sorted:%s', im_ids_sorted)
+
+
+    def filter_superid(im_id):
+        """
+        Ideally we'd filter before performing the query. However we can't just
+        strip out unwanted rows from the ContentDB because we want to keep the
+        reference image even if it doesn't fit the criteria.
+        E.g. Reference channel 1 against query channel 2.
+        """
+        return int(im_id.split('.')[2]) in limit_channels
+
+    im_ids_sorted = [sid for sid in im_ids_sorted if filter_superid(sid)]
+    logger.debug('Filtered im_ids_sorted:%s', im_ids_sorted)
 
 
     context = {'template': 'searcher/contentsearch/searchresult.html'}
