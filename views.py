@@ -83,7 +83,7 @@ def getIdCztPnFromImageIds(imageIds, reqvars):
     return idCztPn
 
 
-def getGroupMembers(conn, request):
+def getGroupMembers(conn):
     """
     Get a list of user-ids and names
     """
@@ -225,7 +225,7 @@ def right_plugin_search_form (request, conn=None, **kwargs):
 
     context['images'] = images
 
-    users = getGroupMembers(conn, request)
+    users = getGroupMembers(conn)
     context['users'] = users
 
     projects, orphanDatasets = getProjectsDatasets(conn)
@@ -269,7 +269,7 @@ def searchpage( request, iIds=None, dId = None, fset = None, numret = None, negI
     limit_channelidxs = [int(x) for x in limit_channelidxs]
     context['limit_channelidxs'] = limit_channelidxs
 
-    users = getGroupMembers(conn, request)
+    users = getGroupMembers(conn)
     context['users'] = users
 
     projects, orphanDatasets = getProjectsDatasets(conn)
