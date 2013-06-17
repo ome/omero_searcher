@@ -514,6 +514,15 @@ def contentsearch( request, conn=None, **kwargs):
                 'czt': czt})
         if ranki == numret:
             break
+
+    if len(images) == 0:
+        context = {'template':
+                       'searcher/contentsearch/search_error.html'}
+        context['message'] = (
+            'No results found. Please try widening your search parameters, '
+            'or calculating features for more images.')
+        return context
+
     context['images'] = images
     #logger.debug('contentsearch images:%s', images)
 
