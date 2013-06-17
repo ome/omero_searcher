@@ -150,12 +150,12 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
                 <input type="checkbox" checked="true" name="limit_users_all"
                     class="search_filter_all" value="All">All</input>
 
-                {% for userid, username in users.items %}
+                {% for user in users %}
                 <div style="margin-left:20px">
                     <input type="checkbox" checked="checked"
                         class="search_filter_item"
-                        name="limit_users" value="{{userid}}"
-                        >{{ username }}</input>
+                        name="limit_users" value="{{user.0}}"
+                        >{{ user.1 }}</input>
                 </div>
                 {% endfor %}
             </div>
@@ -166,17 +166,17 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
             <a href="#" title="Show/Hide" class="search_filter_toggle"></a>
             <div style="margin-left:20px">
 
-                {% for projectid, projectdata in projects.items %}
+                {% for proj in projects %}
                 <div>
                     <input type="checkbox" checked="checked"
                         class="search_filter_all" name="project"
-                        value="{{projectdata.0}}">{{projectdata.0}}</input>
+                        value="{{proj.0}}">{{proj.1}}</input>
 
-                    {% for dsid, dsname in projectdata.1.items %}
+                    {% for dset in proj.2 %}
                     <div style="margin-left:20px">
                         <input type="checkbox" checked="checked"
                             class="search_filter_item" name="limit_datasets"
-                            value="{{dsid}}">{{ dsname }}</input>
+                            value="{{dset.0}}">{{ dset.1 }}</input>
                     </div>
                     {% endfor %}
                 </div>
@@ -187,11 +187,11 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
                         class="search_filter_all" name="project"
                         value="[No project]">[No project]</input>
 
-                    {% for dsid, dsname in datasets.items %}
+                    {% for dset in datasets %}
                     <div style="margin-left:20px">
                         <input type="checkbox" checked="checked"
                             class="search_filter_item" name="limit_datasets"
-                            value="{{dsid}}">{{ dsname }}</input>
+                            value="{{dset.0}}">{{ dset.1 }}</input>
                     </div>
                     {% endfor %}
                 </div>
@@ -206,12 +206,12 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
                 <input type="checkbox" checked="true" name="limit_channelidxs_all"
                     class="search_filter_all" value="All">All</input>
 
-                {% for chid, chname in channelidxs.items %}
+                {% for ch in channelidxs %}
                 <div style="margin-left:20px">
                     <input type="checkbox" checked="checked"
                         class="search_filter_item"
-                        name="limit_channelidxs" value="{{chid}}"
-                        >{{ chname }}</input>
+                        name="limit_channelidxs" value="{{ch.0}}"
+                        >{{ ch.1 }}</input>
                 </div>
                 {% endfor %}
             </div>

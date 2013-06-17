@@ -128,11 +128,11 @@
             <label for="limit_users">Filter by users:</label>
             <a href="#" title="Show/Hide" class="search_refine_toggle"></a>
             <div class="search_filter_selector">
-                {% for userid, username in users.items %}
+                {% for user in users %}
                     <div style="margin-left:20px">
                         <input type="checkbox"
-                            {% if userid in limit_users %}checked="checked"{% endif %}
-                            name="limit_users" value="{{userid}}">{{username}}
+                            {% if user.0 in limit_users %}checked="checked"{% endif %}
+                            name="limit_users" value="{{user.0}}">{{user.1}}
                         </input>
                     </div>
                 {% endfor %}
@@ -143,23 +143,23 @@
             <label for="limit_datasets">Filter by datasets:</label>
             <a href="#" title="Show/Hide" class="search_refine_toggle"></a>
             <div class="search_filter_selector">
-                {% for projectid, projectdata in projects.items %}
-                    {% for dsid, dsname in projectdata.1.items %}
+                {% for proj in projects %}
+                    {% for dset in proj.2 %}
                     <div style="margin-left:20px">
                         <input type="checkbox"
-                            {% if dsid in limit_datasets %}checked="checked"{% endif %}
+                            {% if dset.0 in limit_datasets %}checked="checked"{% endif %}
                             name="limit_datasets"
-                            value="{{dsid}}">{{projectdata.0}}/{{dsname}}
+                            value="{{dset.0}}">{{proj.1}}/{{dset.1}}
                         </input>
                     </div>
                     {% endfor %}
                 {% endfor %}
-                {% for dsid, dsname in datasets.items %}
+                {% for dset in datasets %}
                 <div style="margin-left:20px">
                     <input type="checkbox"
-                        {% if dsid in limit_datasets %}checked="checked"{% endif %}
+                        {% if dset.0 in limit_datasets %}checked="checked"{% endif %}
                         name="limit_datasets"
-                        value="{{dsid}}">{{dsname}}</input>
+                        value="{{dset.0}}">{{dset.1}}</input>
                 </div>
                 {% endfor %}
             </div>
@@ -169,11 +169,11 @@
             <label for="limit_channelidxs">Filter by channel indices:</label>
             <a href="#" title="Show/Hide" class="search_refine_toggle"></a>
             <div class="search_filter_selector">
-                {% for chid, chname in channelidxs.items %}
+                {% for ch in channelidxs %}
                     <div style="margin-left:20px">
                         <input type="checkbox"
-                            {% if chid in limit_channelidxs %}checked="checked"{% endif %}
-                            name="limit_channelidxs" value="{{chid}}">{{chname}}
+                            {% if ch.0 in limit_channelidxs %}checked="checked"{% endif %}
+                            name="limit_channelidxs" value="{{ch.0}}">{{ch.1}}
                         </input>
                     </div>
                 {% endfor %}

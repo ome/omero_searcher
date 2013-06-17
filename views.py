@@ -11,6 +11,7 @@
 
 import logging
 from collections import defaultdict
+from operator import itemgetter
 
 from omeroweb.webclient.decorators import login_required, render_response
 from webclient.webclient_gateway import OmeroWebGateway
@@ -94,8 +95,9 @@ def getGroupMembers(conn, request):
         logger.warn('Failed to get group from SERVICE_OPTS.getOmeroGroup, using getGroupFromContext')
         group = conn.getGroupFromContext()
     logger.debug('group: %s', group)
-    users = dict((x.child.id.val, x.child.getOmeName().val)
-                    for x in group.copyGroupExperimenterMap())
+    users = [(x.child.id.val, x.child.getOmeName().val)
+             for x in group.copyGroupExperimenterMap()]
+    users.sort(key=itemgetter(1))
     return users
 
 
@@ -104,15 +106,20 @@ def getProjectsDatasets(conn):
     Get a list of dataset-ids and project/dataset names
     """
 
-    projects = dict((p.id, (p.name, {}))
+    projects = dict((p.id, (p.name, []))
                     for p in conn.getObjects('Project', None))
-    orphanDatasets = {}
+    orphanDatasets = []
     for d in conn.getObjects('Dataset', None):
         if d.getParent():
-            projects[d.getParent().id][1][d.id] = d.name
+            projects[d.getParent().id][1].append((d.id, d.name))
         else:
-            orphanDatasets[d.id] = d.name
+            orphanDatasets.append((d.id, d.name))
 
+    # First sort projects by name, then sort datasets by name
+    projects = sorted(projects.iteritems(), key=lambda p: p[1][0])
+    projects = [(p[0], p[1][0],
+                 sorted(p[1][1], key=itemgetter(1))) for p in projects]
+    orphanDatasets = sorted(orphanDatasets, key=itemgetter(1))
     return (projects, orphanDatasets)
 
 
@@ -133,7 +140,7 @@ def getChannelIndices(conn):
     Hard code now, to save having to load the ContentDB
     TODO: Figure out how to get a useful list of available channels
     """
-    channels = dict((c, str(c)) for c in range(10))
+    channels = [(c, str(c)) for c in range(10)]
     return channels
 
 
