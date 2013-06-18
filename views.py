@@ -17,7 +17,7 @@ from omeroweb.webclient.decorators import login_required, render_response
 from webclient.webclient_gateway import OmeroWebGateway
 
 import omero
-from omero.rtypes import rint
+from omero.rtypes import rint, wrap, unwrap
 
 # import featuresetInfo     # TODO import currently failing
 
@@ -175,6 +175,79 @@ def getImageChannelMap(conn):
                 cname = cname.val
             imChMap[p.getImage().id.val].append(cname)
     return imChMap
+
+
+def filterImageUserChannels(conn, iids, uids=None, chnames=None):
+    """
+    Queries the database to see which images fit the requested criteria
+    """
+    if not iids:
+        return {}
+
+    qs = conn.getQueryService()
+    query = ('select p from Pixels p join '
+             'fetch p.channels as c join '
+             'fetch c.logicalChannel as lc join '
+             'fetch p.image as im '
+             'where im.id in (:iids)')
+
+    params = omero.sys.ParametersI()
+    params.add('iids', wrap([long(u) for u in iids]))
+
+    logger.debug('iids:%s uids:%s chnames:%s', iids, uids, chnames)
+
+    if uids:
+        query += 'and p.details.owner.id in (:uids) '
+        params.add('uids', wrap([long(u) for u in uids]))
+    if chnames:
+        if UNNAMED_CHANNEL in chnames:
+            query += 'and (lc.name in (:chns) or lc.name is NULL) '
+        else:
+            query += 'and lc.name in (:chns) '
+        params.add('chns', wrap([str(chn) for chn in chnames]))
+
+    ps = qs.findAllByQuery(query, params, conn.SERVICE_OPTS)
+
+    def getChName(pixels, c):
+        try:
+            ch = p.getChannel(c)
+        except IndexError:
+            return None
+        if not ch:
+            return None
+        name = ch.getLogicalChannel(c).name
+        if name is None:
+            return UNNAMED_CHANNEL
+        return unwrap(name)
+
+    imChMap = {}
+    for p in ps:
+        iid = unwrap(p.image.id)
+
+        # The HQL query restricted the channel search, so some channels won't
+        # be loaded. Unloaded trailing channels won't be created either.
+        cs = [getChName(p, c) for c in xrange(unwrap(p.getSizeC()))]
+        imChMap[iid] = cs
+    return imChMap
+
+
+def filterByDataset(conn, iids, dids):
+    """
+    Check whether the supplied image ids are contained in one of the specified
+    datasets, given as IDs
+    """
+    qs = conn.getQueryService()
+    query = ('select dl from DatasetImageLink dl '
+             'where dl.parent.id in (:dids) '
+             'and dl.child.id in (:iids) ')
+
+    params = omero.sys.ParametersI()
+    params.add('dids', wrap([long(u) for u in dids]))
+    params.add('iids', wrap([long(u) for u in iids]))
+
+    dls = qs.findAllByQuery(query, params, conn.SERVICE_OPTS)
+    filteredIids = [dl.child.id.val for dl in dls]
+    return filteredIids
 
 
 def listAvailableCZTS(conn, imageId, ftset):
@@ -385,10 +458,6 @@ def contentsearch( request, conn=None, **kwargs):
     limit_datasets = set(int(x) for x in limit_datasets)
     logger.debug('Got limit_datasets: %s', limit_datasets)
 
-    # TODO: Optimise, this is slow
-    imDsMap = getImageDatasetMap(conn)
-    imChMap = getImageChannelMap(conn)
-
     limit_channelidxs = request.POST.getlist("limit_channelidxs")
     if len(limit_channelidxs) == 0:
         context = {
@@ -517,16 +586,9 @@ def contentsearch( request, conn=None, **kwargs):
 
     context = {'template': 'searcher/contentsearch/searchresult.html'}
 
-    def filter_image(im):
-        if im.getOwner().id not in limit_users:
-            return False
-        # http://stackoverflow.com/a/2197506
-        if not any(ld in limit_datasets for ld in imDsMap[im.id]):
-            return False
-        # TODO: need to get ch index from super id, then check channel name
-        #if not any(lc in limit_channelnames for lc in imChMap[im.id]):
-        #    return False
-        return True
+    def split_sid(sid):
+        iid, p, c, z, t = sid.split('.')
+        return int(iid), int(p), int(c), int(z), int(t)
 
     def image_batch_load(conn, im_ids_sorted, numret):
         """
@@ -534,45 +596,83 @@ def contentsearch( request, conn=None, **kwargs):
         don't know how many to load, and it's also possible for images to
         have been deleted but remain in the contentDB.
         Read in chunks until we have the required number of images.
+
+        1. Discard sids which aren't in a selected dataset
+        2. Discard sids which aren't
+           * owned by a selected user
+           * contain at least one channel with a selected name
+        3. Retrieve the corresponding image objects
+        4. Build a map of sids to image objects, discarding sids whose images
+           no longer exist
         """
         img_map = {}
 
         # We need to choose the batch size
         # Remember getObjects() returns objects in an unspecified order, so we
         # must iterate through the entire result and re-order
-        batch_size = numret
+        batch_size = max(numret, 100)
 
         i = 0
         while i < len(im_ids_sorted):
-            batch_sids = im_ids_sorted[i:i + batch_size]
-            batch_ids = [int(id.split('.')[0]) for id in batch_sids]
-            batch_ims = conn.getObjects('Image', batch_ids)
-            i += batch_size
+            batch_sids = dict((sid, split_sid(sid)[0])
+                              for sid in im_ids_sorted[i:i + batch_size])
 
-            img_map.update((im.id, im) for im in batch_ims if filter_image(im))
+            filter1ids = filterByDataset(
+                conn, batch_sids.values(), limit_datasets)
+
+            imChMap = filterImageUserChannels(
+                conn, filter1ids, uids=limit_users, chnames=limit_channelnames)
+
+            # Now discard superids where C does not correspond to a required
+            # channel name
+            batch_filtered_sids = {}
+            for sid in batch_sids:
+                iid, p, c, z, t = split_sid(sid)
+                if (iid in imChMap and
+                    imChMap[iid][int(c)] in limit_channelnames):
+                    batch_filtered_sids[sid] = iid
+
+            if batch_filtered_sids:
+                batch_ims = conn.getObjects(
+                    'Image', batch_filtered_sids.values())
+            else:
+                batch_ims = []
+            iid_ims_map = dict((im.getId(), im) for im in batch_ims)
+
+            logger.debug('image_batch_load filter: %d -> %d -> %d -> %d) ',
+                         len(batch_sids), len(filter1ids), len(imChMap),
+                         len(iid_ims_map))
+
+            #for sid, iid in batch_filtered_sids.iteritems():
+            #    img_map[sid] = iid_ims_map[iid]
+            img_map.update((sid, iid_ims_map[iid])
+                           for sid, iid in batch_filtered_sids.iteritems())
+
             if len(img_map) >= numret:
                 break
 
-        logger.debug('img_map:%s', img_map)
+            i += batch_size
+
         return img_map
 
 
-    imgMap = image_batch_load(conn, im_ids_sorted, numret)
+    img_map = image_batch_load(conn, im_ids_sorted, numret)
+    logger.debug('img_map: [%d] %s', len(img_map), img_map)
 
     images = []
     ranki = 0
-    for i in im_ids_sorted:
-        iid = int(i.split(".")[0])
-        if iid in imgMap:
-            img = imgMap[iid]
+    for sid in im_ids_sorted:
+        iid = int(sid.split(".")[0])
+        if sid in img_map:
+            img = img_map[sid]
             # id.px.c.z.t
-            czt = i.split(".", 2)[2]
+            czt = sid.split(".", 2)[2]
             ranki += 1
             images.append({'name':img.getName(),
-                'id':iid,
+                'id': iid,
                 'getPermsCss': img.getPermsCss(),
                 'ranki': ranki,
-                'superid': i,
+                'superid': sid,
                 'czt': czt})
         if ranki == numret:
             break
@@ -586,7 +686,7 @@ def contentsearch( request, conn=None, **kwargs):
         return context
 
     context['images'] = images
-    #logger.debug('contentsearch images:%s', images)
+    #logger.debug('context images:%s', images)
 
     return context
 
