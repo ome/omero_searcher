@@ -11,6 +11,7 @@
 
 import logging
 from collections import defaultdict
+from datetime import datetime
 from operator import itemgetter
 
 from omeroweb.webclient.decorators import login_required, render_response
@@ -425,6 +426,7 @@ def searchpage( request, iIds=None, dId = None, fset = None, numret = None, negI
 @login_required(setGroupContext=True)
 @render_response()
 def contentsearch( request, conn=None, **kwargs):
+    startTime = datetime.now()
 
     #server_name=request.META['SERVER_NAME']
     #owner=request.session['username']
@@ -687,6 +689,11 @@ def contentsearch( request, conn=None, **kwargs):
 
     context['images'] = images
     #logger.debug('context images:%s', images)
+
+    endTime = datetime.now()
+    dd = endTime - startTime
+    context['performance'] = '%d results returned in %d.%d seconds' % (
+        len(images), dd.seconds, dd.microseconds)
 
     return context
 
