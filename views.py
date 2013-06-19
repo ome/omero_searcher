@@ -407,6 +407,12 @@ def searchpage( request, iIds=None, dId = None, fset = None, numret = None, negI
         idCztPn = getIdCztPnFromImageIds(allIds, request.POST)
         imageIds = idCztPn.keys()
 
+    if not imageIds:
+        # This usually occurs if someone attempts to load one of the internal
+        # OMERO.searcher pages without GET/POST variables.
+        logger.error('No imageIds')
+        return {'template': 'searcher/index.html'}
+
     images = []
     for i in conn.getObjects("Image", imageIds):
         available = listAvailableCZTS(conn, i.id, str(context['fset']))
