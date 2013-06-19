@@ -51,6 +51,19 @@
                 $(this).prev().text('[+] show');
             });
 
+
+            $("#enable_search_refines").change(function() {
+                if (this.checked) {
+                    $(".search_filter_refine").slideDown();
+                }
+                else {
+                    $(".search_filter_refine").slideUp();
+                }
+            });
+            if (!$("#enable_search_refines").prop('checked')) {
+                $(".search_filter_refine").hide();
+            }
+
         });
 
     </script>
@@ -125,6 +138,13 @@
         </div>
 
         <div>
+            <input type="checkbox" id="enable_search_refines"
+                {% if enable_filters %}checked="checked"{% endif %}
+                name="enable_filters" value="enable">Enable
+                additional search filters (may slow down queries).</input>
+        </div>
+
+        <div class="search_filter_refine">
             <label for="limit_users">Filter by users:</label>
             <a href="#" title="Show/Hide" class="search_refine_toggle"></a>
             <div class="search_filter_selector">
@@ -139,7 +159,7 @@
             </div>
         </div>
 
-        <div>
+        <div class="search_filter_refine">
             <label for="limit_datasets">Filter by datasets:</label>
             <a href="#" title="Show/Hide" class="search_refine_toggle"></a>
             <div class="search_filter_selector">
@@ -165,7 +185,7 @@
             </div>
         </div>
 
-        <div>
+        <div class="search_filter_refine">
             <label for="limit_channelidxs">Filter by channel indices:</label>
             <a href="#" title="Show/Hide" class="search_refine_toggle"></a>
             <div class="search_filter_selector">
@@ -180,7 +200,7 @@
             </div>
         </div>
 
-        <div>
+        <div class="search_filter_refine">
             <label for="limit_channelnames">Filter by channel names:</label>
             <a href="#" title="Show/Hide" class="search_refine_toggle"></a>
             <div class="search_filter_selector">

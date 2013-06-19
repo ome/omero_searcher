@@ -97,6 +97,16 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
             $(this).prev().text('[+] show');
         });
 
+        $("#enable_search_filters").change(function() {
+            if (this.checked) {
+                $(".search_filter_group").slideDown();
+            }
+            else {
+                $(".search_filter_group").slideUp();
+            }
+        });
+        $(".search_filter_group").hide();
+
     });    
 
 </script>
@@ -143,7 +153,13 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
             </select>
         </div>
 
-        <div id="search_filter_users">
+        <div>
+            <input type="checkbox" id="enable_search_filters"
+                name="enable_filters" value="enable">Enable
+                additional search filters (may slow down queries).</input>
+        </div>
+
+        <div class="search_filter_group">
             <label for="limit_users">Filter by user:</label>
             <a href="#" title="Show/Hide" class="search_filter_toggle"></a>
             <div style="margin-left:20px">
@@ -161,7 +177,7 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
             </div>
         </div>
 
-        <div id="search_filter_datasets">
+        <div class="search_filter_group">
             <label for="limit_datasets">Filter by project/dataset:</label>
             <a href="#" title="Show/Hide" class="search_filter_toggle"></a>
             <div style="margin-left:20px">
@@ -199,7 +215,7 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
             </div>
         </div>
 
-        <div id="search_filter_channelidxs">
+        <div class="search_filter_group">
             <label for="limit_channelidxs">Filter by channel index:</label>
             <a href="#" title="Show/Hide" class="search_filter_toggle"></a>
             <div style="margin-left:20px">
@@ -217,7 +233,7 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
             </div>
         </div>
 
-        <div id="search_filter_channelnames">
+        <div class="search_filter_group">
             <label for="limit_channelnames">Filter by channel name:</label>
             <a href="#" title="Show/Hide" class="search_filter_toggle"></a>
             <div style="margin-left:20px">

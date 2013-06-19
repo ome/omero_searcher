@@ -365,6 +365,11 @@ def searchpage( request, iIds=None, dId = None, fset = None, numret = None, negI
     context['fset'] = request.POST.get("featureset_Name")
     context['numret'] = request.POST.get("NumRetrieve")
 
+    enable_filters = request.POST.get("enable_filters") == 'enable'
+    context['enable_filters'] = enable_filters
+
+    logger.debug('enable_filters: %s', enable_filters)
+
     limit_users = request.POST.getlist("limit_users")
     limit_users = [int(x) for x in limit_users]
     context['limit_users'] = limit_users
@@ -437,6 +442,8 @@ def contentsearch( request, conn=None, **kwargs):
     fset = request.POST.get("featureset_Name")
     numret = request.POST.get("NumRetrieve")
     numret = int(numret)
+    enable_filters = request.POST.get("enable_filters") == 'enable'
+    logger.debug('Got enable_filters: %s', enable_filters)
 
     limit_users = request.POST.getlist("limit_users")
     if len(limit_users) == 0:
@@ -582,7 +589,8 @@ def contentsearch( request, conn=None, **kwargs):
         """
         return int(im_id.split('.')[2]) in limit_channelidxs
 
-    im_ids_sorted = [sid for sid in im_ids_sorted if filter_superid(sid)]
+    if enable_filters:
+        im_ids_sorted = [sid for sid in im_ids_sorted if filter_superid(sid)]
     logger.debug('Filtered im_ids_sorted:%s', im_ids_sorted)
 
 
@@ -619,20 +627,25 @@ def contentsearch( request, conn=None, **kwargs):
             batch_sids = dict((sid, split_sid(sid)[0])
                               for sid in im_ids_sorted[i:i + batch_size])
 
-            filter1ids = filterByDataset(
-                conn, batch_sids.values(), limit_datasets)
+            if enable_filters:
+                filter1ids = filterByDataset(
+                    conn, batch_sids.values(), limit_datasets)
 
-            imChMap = filterImageUserChannels(
-                conn, filter1ids, uids=limit_users, chnames=limit_channelnames)
+                imChMap = filterImageUserChannels(
+                    conn, filter1ids, uids=limit_users,
+                    chnames=limit_channelnames)
 
-            # Now discard superids where C does not correspond to a required
-            # channel name
-            batch_filtered_sids = {}
-            for sid in batch_sids:
-                iid, p, c, z, t = split_sid(sid)
-                if (iid in imChMap and
-                    imChMap[iid][int(c)] in limit_channelnames):
-                    batch_filtered_sids[sid] = iid
+                # Now discard superids where C does not correspond to a required
+                # channel name
+                batch_filtered_sids = {}
+                for sid in batch_sids:
+                    iid, p, c, z, t = split_sid(sid)
+                    if (iid in imChMap and
+                        imChMap[iid][int(c)] in limit_channelnames):
+                        batch_filtered_sids[sid] = iid
+
+            else:
+                batch_filtered_sids = batch_sids
 
             if batch_filtered_sids:
                 batch_ims = conn.getObjects(
@@ -642,11 +655,11 @@ def contentsearch( request, conn=None, **kwargs):
             iid_ims_map = dict((im.getId(), im) for im in batch_ims)
 
             logger.debug('image_batch_load filter: %d -> %d -> %d -> %d) ',
-                         len(batch_sids), len(filter1ids), len(imChMap),
+                         len(batch_sids),
+                         len(filter1ids) if enable_filters else -1,
+                         len(imChMap) if enable_filters else -1,
                          len(iid_ims_map))
 
-            #for sid, iid in batch_filtered_sids.iteritems():
-            #    img_map[sid] = iid_ims_map[iid]
             img_map.update((sid, iid_ims_map[iid])
                            for sid, iid in batch_filtered_sids.iteritems())
 
