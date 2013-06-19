@@ -26,11 +26,13 @@
                 });
                 $searchImagesTable.prepend($tbody);
 
+                $("#content_search").submit();
+            });
+
+            $("#content_search").submit(function() {
                 $("div#content_details").append(
                     '<div class="loading_center" style="position:absolute;width:100%;top:0px;background-color:rgba(255,255,255,0.75);"><p>Loading... please wait.</p><img src ="{% static "webgateway/img/spinner_big.gif" %}"/></div>'
                 ).scrollTop(0).scrollLeft(0);
-
-                $("#content_search").submit();
             });
 
             // Form ajax handling - load results to central panel.
