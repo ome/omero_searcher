@@ -122,8 +122,7 @@
 <div id="searching">
     <div class="left_panel_inner">
 
-    <h1> {% trans "Search again with additional image(s)" %}            <span id="searching_again_description" title="Search again - <small>Performs another round of search by image content. Using the previous settings (selected image(s), featureset, # retrieved images, and dataset), you can include additional images to the search query by selecting images. <br/><br/>
-            For example, if you have some images that you don't like among the current result, you can add those images as negative samples and do another round of search.</small>"><img src="{% static "webclient/images/help16.png" %}" /></span></h1>
+    <h1>{% trans "Search again with additional image(s)" %}</h1>
 
 
     <form id="content_search" class="content_search" method="POST" action="{% url contentsearch %}">
