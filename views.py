@@ -452,7 +452,7 @@ def contentsearch( request, conn=None, **kwargs):
     logger.debug('Got enable_filters: %s', enable_filters)
 
     limit_users = request.POST.getlist("limit_users")
-    if len(limit_users) == 0:
+    if enable_filters and len(limit_users) == 0:
         context = {
             'template': 'searcher/contentsearch/search_error.html',
             'message': 'No users selected'
@@ -463,7 +463,7 @@ def contentsearch( request, conn=None, **kwargs):
     logger.debug('Got limit_users: %s', limit_users)
 
     limit_datasets = request.POST.getlist("limit_datasets")
-    if len(limit_datasets) == 0:
+    if enable_filters and len(limit_datasets) == 0:
         context = {
             'template': 'searcher/contentsearch/search_error.html',
             'message': 'No datasets selected'
@@ -474,7 +474,7 @@ def contentsearch( request, conn=None, **kwargs):
     logger.debug('Got limit_datasets: %s', limit_datasets)
 
     limit_channelidxs = request.POST.getlist("limit_channelidxs")
-    if len(limit_channelidxs) == 0:
+    if enable_filters and len(limit_channelidxs) == 0:
         context = {
             'template': 'searcher/contentsearch/search_error.html',
             'message': 'No channel indices selected'
@@ -485,7 +485,7 @@ def contentsearch( request, conn=None, **kwargs):
     logger.debug('Got limit_channelidxs: %s', limit_channelidxs)
 
     limit_channelnames = request.POST.getlist("limit_channelnames")
-    if len(limit_channelnames) == 0:
+    if enable_filters and len(limit_channelnames) == 0:
         context = {
             'template': 'searcher/contentsearch/search_error.html',
             'message': 'No channel names selected'
