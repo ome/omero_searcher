@@ -44,6 +44,24 @@
             .submit();  // on initial load, do first search by submitting immediately
 
 
+            $('input.search_refine_item').change(function() {
+                var all_checked = true;
+                var parent = $(this).parent().parent()
+                parent.children().children('input.search_refine_item').each(function() {
+                    all_checked = all_checked && this.checked;
+                });
+                parent.find('input.search_refine_all').prop('checked', all_checked);
+            });
+
+            $('input.search_refine_all').change(function() {
+                var all_checked = this.checked;
+                $(this).parent().children().children('input.search_refine_item')
+                    .each(function() {
+                        this.checked = all_checked;
+                    });
+            });
+
+
             $(".search_refine_toggle").click(function(event){
                 event.preventDefault();
                 $(this).next().slideToggle(500, function(){
@@ -61,15 +79,20 @@
 
             $("#enable_search_refines").change(function() {
                 if (this.checked) {
-                    $(".search_filter_refine").slideDown();
+                    $(".search_refine_group").slideDown();
                 }
                 else {
-                    $(".search_filter_refine").slideUp();
+                    $(".search_refine_group").slideUp();
                 }
             });
             if (!$("#enable_search_refines").prop('checked')) {
-                $(".search_filter_refine").hide();
+                $(".search_refine_group").hide();
             }
+
+            // Finally we need to set the initial state of the parent 'All'
+            // checkboxes. For now just set a change event on every checkbox.
+            // TODO: We should only trigger a change even once per group
+            $('input.search_refine_item').trigger('change');
 
         });
 
@@ -150,79 +173,104 @@
                 additional search filters (may slow down queries).</input>
         </div>
 
-        <div class="search_filter_refine">
-            <label for="limit_users">Filter by users:</label>
+        <div class="search_refine_group">
+            <label for="limit_users">Filter by user:</label>
             <a href="#" title="Show/Hide" class="search_refine_toggle"></a>
-            <div class="search_filter_selector">
-                {% for user in users %}
-                    <div style="margin-left:20px">
-                        <input type="checkbox"
-                            {% if user.0 in limit_users %}checked="checked"{% endif %}
-                            name="limit_users" value="{{user.0}}">{{user.1}}
-                        </input>
-                    </div>
-                {% endfor %}
-            </div>
-        </div>
+            <div style="margin-left:20px">
+                <input type="checkbox" name="limit_users_all"
+                    class="search_refine_all" value="All">All</input>
 
-        <div class="search_filter_refine">
-            <label for="limit_datasets">Filter by datasets:</label>
-            <a href="#" title="Show/Hide" class="search_refine_toggle"></a>
-            <div class="search_filter_selector">
-                {% for proj in projects %}
-                    {% for dset in proj.2 %}
-                    <div style="margin-left:20px">
-                        <input type="checkbox"
-                            {% if dset.0 in limit_datasets %}checked="checked"{% endif %}
-                            name="limit_datasets"
-                            value="{{dset.0}}">{{proj.1}}/{{dset.1}}
-                        </input>
-                    </div>
-                    {% endfor %}
-                {% endfor %}
-                {% for dset in datasets %}
+                {% for user in users %}
                 <div style="margin-left:20px">
                     <input type="checkbox"
-                        {% if dset.0 in limit_datasets %}checked="checked"{% endif %}
-                        name="limit_datasets"
-                        value="{{dset.0}}">{{dset.1}}</input>
+                        {% if user.2 %}checked="checked"{% endif %}
+                        class="search_refine_item"
+                        name="limit_users" value="{{user.0}}"
+                        >{{user.1}}</input>
                 </div>
                 {% endfor %}
             </div>
         </div>
 
-        <div class="search_filter_refine">
-            <label for="limit_channelidxs">Filter by channel indices:</label>
+        <div class="search_refine_group">
+            <label for="limit_datasets">Filter by project/dataset:</label>
             <a href="#" title="Show/Hide" class="search_refine_toggle"></a>
-            <div class="search_filter_selector">
+            <div style="margin-left:20px">
+
+                {% for proj in projects %}
+                <div>
+                    <input type="checkbox"
+                        class="search_refine_all" name="project"
+                        value="{{proj.0}}">{{proj.1}}</input>
+
+                    {% for dset in proj.2 %}
+                    <div style="margin-left:20px">
+                        <input type="checkbox"
+                            {% if dset.2 %}checked="checked"{% endif %}
+                            class="search_refine_item" name="limit_datasets"
+                            value="{{dset.0}}">{{dset.1}}</input>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+
+                <div>
+                    <input type="checkbox"
+                        class="search_refine_all" name="project"
+                        value="[No project]">[No project]</input>
+
+                    {% for dset in datasets %}
+                    <div style="margin-left:20px">
+                        <input type="checkbox"
+                            {% if dset.2 %}checked="checked"{% endif %}
+                            class="search_refine_item" name="limit_datasets"
+                            value="{{dset.0}}">{{dset.1}}</input>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="search_refine_group">
+            <label for="limit_channelidxs">Filter by channel index:</label>
+            <a href="#" title="Show/Hide" class="search_refine_toggle"></a>
+            <div style="margin-left:20px">
+                <input type="checkbox" name="limit_channelidxs_all"
+                    class="search_refine_all" value="All">All</input>
+
                 {% for ch in channelidxs %}
-                    <div style="margin-left:20px">
-                        <input type="checkbox"
-                            {% if ch.0 in limit_channelidxs %}checked="checked"{% endif %}
-                            name="limit_channelidxs" value="{{ch.0}}">{{ch.1}}
-                        </input>
-                    </div>
+                <div style="margin-left:20px">
+                    <input type="checkbox"
+                        {% if ch.2 %}checked="checked"{% endif %}
+                        class="search_refine_item"
+                        name="limit_channelidxs" value="{{ch.0}}">{{ch.1}}
+                    </input>
+                </div>
                 {% endfor %}
             </div>
         </div>
 
-        <div class="search_filter_refine">
-            <label for="limit_channelnames">Filter by channel names:</label>
+        <div class="search_refine_group">
+            <label for="limit_channelnames">Filter by channel name:</label>
             <a href="#" title="Show/Hide" class="search_refine_toggle"></a>
-            <div class="search_filter_selector">
+            <div style="margin-left:20px">
+                <input type="checkbox" name="limit_channelnames_all"
+                    class="search_refine_all" value="All">All</input>
+
                 {% for ch in channelnames %}
-                    <div style="margin-left:20px">
-                        <input type="checkbox"
-                            {% if ch.0 in limit_channelnames %}checked="checked"{% endif %}
-                            name="limit_channelnames" value="{{ch.0}}">{{ch.1}}
-                        </input>
+                <div style="margin-left:20px">
+                    <input type="checkbox"
+                        {% if ch.2 %}checked="checked"{% endif %}
+                        class="search_refine_item"
+                        name="limit_channelnames" value="{{ch.0}}"
+                        >{{ch.1}}</input>
                     </div>
                 {% endfor %}
             </div>
         </div>
 
 
-        <input style="float:right" id="doSearch" type="button" value="Do Search"/> 
+        <input style="float:right" id="doSearch" type="button" value="Refine Results"/>
 
         <div style="clear:both; padding:0px"></div>
         <hr/>

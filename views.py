@@ -84,9 +84,16 @@ def getIdCztPnFromImageIds(imageIds, reqvars):
     return idCztPn
 
 
-def getGroupMembers(conn):
+def noneOrInList(limit_list, id):
     """
-    Get a list of user-ids and names
+    A helper function to control whether a filter item should be enabled or not
+    """
+    return limit_list is None or id in limit_list
+
+
+def getGroupMembers(conn, limit_users=None):
+    """
+    Get a list of (user-id, name, enabled?)
     """
 
     gid = conn.SERVICE_OPTS.getOmeroGroup()
@@ -96,25 +103,28 @@ def getGroupMembers(conn):
         logger.warn('Failed to get group from SERVICE_OPTS.getOmeroGroup, using getGroupFromContext')
         group = conn.getGroupFromContext()
     logger.debug('group: %s', group)
-    users = [(x.child.id.val, x.child.getOmeName().val)
+    users = [(x.child.id.val,
+              x.child.getOmeName().val,
+              noneOrInList(limit_users, x.child.id.val))
              for x in group.copyGroupExperimenterMap()]
     users.sort(key=itemgetter(1))
     return users
 
 
-def getProjectsDatasets(conn):
+def getProjectsDatasets(conn, limit_datasets=None):
     """
-    Get a list of dataset-ids and project/dataset names
+    Get a list of (dataset-id, project/dataset name, enabled?)
     """
 
     projects = dict((p.id, (p.name, []))
                     for p in conn.getObjects('Project', None))
     orphanDatasets = []
     for d in conn.getObjects('Dataset', None):
+        enabled = noneOrInList(limit_datasets, d.id)
         if d.getParent():
-            projects[d.getParent().id][1].append((d.id, d.name))
+            projects[d.getParent().id][1].append((d.id, d.name, enabled))
         else:
-            orphanDatasets.append((d.id, d.name))
+            orphanDatasets.append((d.id, d.name, enabled))
 
     # First sort projects by name, then sort datasets by name
     projects = sorted(projects.iteritems(), key=lambda p: p[1][0])
@@ -136,27 +146,28 @@ def getImageDatasetMap(conn):
     return imDsMap
 
 
-def getChannelIndices(conn):
+def getChannelIndices(conn, limit_channelidxs=None):
     """
+    Get a list of (channel-index, str(channel-index), enabled?)
     Hard code now, to save having to load the ContentDB
     TODO: Figure out how to get a useful list of available channels
     """
-    channels = [(c, str(c)) for c in range(10)]
+    channels = [(c, str(c), noneOrInList(limit_channelidxs, c))
+                for c in range(10)]
     return channels
 
 
 UNNAMED_CHANNEL = '[No channel name]'
 
-def getChannelNames(conn):
+def getChannelNames(conn, limit_channelnames=None):
     """
-    Hard code now, to save having to load the ContentDB
-    TODO: Figure out how to get a useful list of available channels
+    Get a list of (channel-name, channel-name, enabled?)
     """
     qs = conn.getQueryService()
     query = 'select distinct lc.name from LogicalChannel lc order by lc.name'
     channels = qs.projection(query, None, conn.SERVICE_OPTS)
     channels = [c[0].val if c else UNNAMED_CHANNEL for c in channels]
-    channels = [(c, c) for c in channels]
+    channels = [(c, c, noneOrInList(limit_channelnames, c)) for c in channels]
     return channels
 
 
@@ -181,6 +192,7 @@ def getImageChannelMap(conn):
 def filterImageUserChannels(conn, iids, uids=None, chnames=None):
     """
     Queries the database to see which images fit the requested criteria
+    TODO: Check whether this query is correct or not... it might not be
     """
     if not iids:
         return {}
@@ -386,15 +398,15 @@ def searchpage( request, iIds=None, dId = None, fset = None, numret = None, negI
     limit_channelnames = set(limit_channelnames)
     context['limit_channelnames'] = limit_channelnames
 
-    users = getGroupMembers(conn)
+    users = getGroupMembers(conn, limit_users)
     context['users'] = users
 
-    projects, orphanDatasets = getProjectsDatasets(conn)
+    projects, orphanDatasets = getProjectsDatasets(conn, limit_datasets)
     context['projects'] = projects
     context['datasets'] = orphanDatasets
 
-    context['channelidxs'] = getChannelIndices(conn)
-    context['channelnames'] = getChannelNames(conn)
+    context['channelidxs'] = getChannelIndices(conn, limit_channelidxs)
+    context['channelnames'] = getChannelNames(conn, limit_channelnames)
 
     superIds = request.POST.getlist("superIds")
     if superIds:

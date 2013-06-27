@@ -168,7 +168,8 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
 
                 {% for user in users %}
                 <div style="margin-left:20px">
-                    <input type="checkbox" checked="checked"
+                    <input type="checkbox"
+                        {% if user.2 %}checked="checked"{% endif %}
                         class="search_filter_item"
                         name="limit_users" value="{{user.0}}"
                         >{{ user.1 }}</input>
@@ -190,7 +191,8 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
 
                     {% for dset in proj.2 %}
                     <div style="margin-left:20px">
-                        <input type="checkbox" checked="checked"
+                        <input type="checkbox"
+                            {% if dset.2 %}checked="checked"{% endif %}
                             class="search_filter_item" name="limit_datasets"
                             value="{{dset.0}}">{{ dset.1 }}</input>
                     </div>
@@ -205,7 +207,8 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
 
                     {% for dset in datasets %}
                     <div style="margin-left:20px">
-                        <input type="checkbox" checked="checked"
+                        <input type="checkbox"
+                            {% if dset.2 %}checked="checked"{% endif %}
                             class="search_filter_item" name="limit_datasets"
                             value="{{dset.0}}">{{ dset.1 }}</input>
                     </div>
@@ -224,7 +227,8 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
 
                 {% for ch in channelidxs %}
                 <div style="margin-left:20px">
-                    <input type="checkbox" checked="checked"
+                    <input type="checkbox"
+                        {% if ch.2 %}checked="checked"{% endif %}
                         class="search_filter_item"
                         name="limit_channelidxs" value="{{ch.0}}"
                         >{{ ch.1 }}</input>
@@ -242,7 +246,8 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
 
                 {% for ch in channelnames %}
                 <div style="margin-left:20px">
-                    <input type="checkbox" checked="checked"
+                    <input type="checkbox"
+                        {% if ch.2 %}checked="checked"{% endif %}
                         class="search_filter_item"
                         name="limit_channelnames" value="{{ch.0}}"
                         >{{ ch.1 }}</input>
