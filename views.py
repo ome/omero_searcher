@@ -723,8 +723,8 @@ def contentsearch( request, conn=None, **kwargs):
 
     endTime = datetime.now()
     dd = endTime - startTime
-    context['performance'] = '%d results returned in %d.%d seconds' % (
-        len(images), dd.seconds, dd.microseconds)
+    context['performance'] = '%d results returned in %d.%03d seconds' % (
+        len(images), dd.seconds, dd.microseconds / 1000)
 
     return context
 
