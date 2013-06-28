@@ -105,7 +105,15 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
                 $(".search_filter_group").slideUp();
             }
         });
-        $(".search_filter_group").hide();
+
+        if (!$("#enable_search_filter").prop('checked')) {
+            $(".search_filter_group").hide();
+        }
+
+        // Finally we need to set the initial state of the parent 'All'
+        // checkboxes. For now just set a change event on every checkbox.
+        // TODO: We should only trigger a change even once per group
+        $('input.search_filter_item').trigger('change');
 
     });    
 
@@ -163,7 +171,7 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
             <label for="limit_users">Filter by user:</label>
             <a href="#" title="Show/Hide" class="search_filter_toggle"></a>
             <div style="margin-left:20px">
-                <input type="checkbox" checked="true" name="limit_users_all"
+                <input type="checkbox" name="limit_users_all"
                     class="search_filter_all" value="All">All</input>
 
                 {% for user in users %}
@@ -185,7 +193,7 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
 
                 {% for proj in projects %}
                 <div>
-                    <input type="checkbox" checked="checked"
+                    <input type="checkbox"
                         class="search_filter_all" name="project"
                         value="{{proj.0}}">{{proj.1}}</input>
 
@@ -201,7 +209,7 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
                 {% endfor %}
 
                 <div>
-                    <input type="checkbox" checked="checked"
+                    <input type="checkbox"
                         class="search_filter_all" name="project"
                         value="[No project]">[No project]</input>
 
@@ -222,7 +230,7 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
             <label for="limit_channelidxs">Filter by channel index:</label>
             <a href="#" title="Show/Hide" class="search_filter_toggle"></a>
             <div style="margin-left:20px">
-                <input type="checkbox" checked="true" name="limit_channelidxs_all"
+                <input type="checkbox" name="limit_channelidxs_all"
                     class="search_filter_all" value="All">All</input>
 
                 {% for ch in channelidxs %}
@@ -241,7 +249,7 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
             <label for="limit_channelnames">Filter by channel name:</label>
             <a href="#" title="Show/Hide" class="search_filter_toggle"></a>
             <div style="margin-left:20px">
-                <input type="checkbox" checked="true" name="limit_channelnames_all"
+                <input type="checkbox" name="limit_channelnames_all"
                     class="search_filter_all" value="All">All</input>
 
                 {% for ch in channelnames %}
