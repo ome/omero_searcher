@@ -10,12 +10,15 @@
 #
 
 import logging
+from collections import defaultdict
+from datetime import datetime
+from operator import itemgetter
 
 from omeroweb.webclient.decorators import login_required, render_response
 from webclient.webclient_gateway import OmeroWebGateway
 
 import omero
-from omero.rtypes import rint
+from omero.rtypes import rint, wrap, unwrap
 
 # import featuresetInfo     # TODO import currently failing
 
@@ -81,9 +84,16 @@ def getIdCztPnFromImageIds(imageIds, reqvars):
     return idCztPn
 
 
-def getGroupMembers(conn, request):
+def noneOrInList(limit_list, id):
     """
-    Get a list of user-ids and names
+    A helper function to control whether a filter item should be enabled or not
+    """
+    return limit_list is None or id in limit_list
+
+
+def getGroupMembers(conn, limit_users=None):
+    """
+    Get a list of (user-id, name, enabled?)
     """
 
     gid = conn.SERVICE_OPTS.getOmeroGroup()
@@ -93,9 +103,164 @@ def getGroupMembers(conn, request):
         logger.warn('Failed to get group from SERVICE_OPTS.getOmeroGroup, using getGroupFromContext')
         group = conn.getGroupFromContext()
     logger.debug('group: %s', group)
-    users = dict((x.child.id.val, x.child.getOmeName().val)
-                    for x in group.copyGroupExperimenterMap())
+    users = [(x.child.id.val,
+              x.child.getOmeName().val,
+              noneOrInList(limit_users, x.child.id.val))
+             for x in group.copyGroupExperimenterMap()]
+    users.sort(key=itemgetter(1))
     return users
+
+
+def getProjectsDatasets(conn, limit_datasets=None):
+    """
+    Get a list of (dataset-id, project/dataset name, enabled?)
+    """
+
+    projects = dict((p.id, (p.name, []))
+                    for p in conn.getObjects('Project', None))
+    orphanDatasets = []
+    for d in conn.getObjects('Dataset', None):
+        enabled = noneOrInList(limit_datasets, d.id)
+        if d.getParent():
+            projects[d.getParent().id][1].append((d.id, d.name, enabled))
+        else:
+            orphanDatasets.append((d.id, d.name, enabled))
+
+    # First sort projects by name, then sort datasets by name
+    projects = sorted(projects.iteritems(), key=lambda p: p[1][0])
+    projects = [(p[0], p[1][0],
+                 sorted(p[1][1], key=itemgetter(1))) for p in projects]
+    orphanDatasets = sorted(orphanDatasets, key=itemgetter(1))
+    return (projects, orphanDatasets)
+
+
+def getImageDatasetMap(conn):
+    """
+    It should be quicker to build a one-off mapping of images to datasets
+    than it is to call im.listParents() on every image
+    """
+    imDsMap = defaultdict(list)
+    for d in conn.getObjects('Dataset', None):
+        for i in d.listChildren():
+            imDsMap[i.id].append(d.id)
+    return imDsMap
+
+
+def getChannelIndices(conn, limit_channelidxs=None):
+    """
+    Get a list of (channel-index, str(channel-index), enabled?)
+    Hard code now, to save having to load the ContentDB
+    TODO: Figure out how to get a useful list of available channels
+    """
+    channels = [(c, str(c), noneOrInList(limit_channelidxs, c))
+                for c in range(10)]
+    return channels
+
+
+UNNAMED_CHANNEL = '[No channel name]'
+
+def getChannelNames(conn, limit_channelnames=None):
+    """
+    Get a list of (channel-name, channel-name, enabled?)
+    """
+    qs = conn.getQueryService()
+    query = 'select distinct lc.name from LogicalChannel lc order by lc.name'
+    channels = qs.projection(query, None, conn.SERVICE_OPTS)
+    channels = [c[0].val if c else UNNAMED_CHANNEL for c in channels]
+    channels = [(c, c, noneOrInList(limit_channelnames, c)) for c in channels]
+    return channels
+
+
+def getImageChannelMap(conn):
+    imChMap = defaultdict(list)
+    qs = conn.getQueryService()
+    query = ('select p from Pixels p join '
+             'fetch p.channels as c join '
+             'fetch c.logicalChannel as lc')
+    ps = qs.findAllByQuery(query, None, conn.SERVICE_OPTS)
+    for p in ps:
+        for c in xrange(p.getSizeC().val):
+            cname = p.getChannel(c).getLogicalChannel(c).getName()
+            if cname is None:
+                cname = UNNAMED_CHANNEL
+            else:
+                cname = cname.val
+            imChMap[p.getImage().id.val].append(cname)
+    return imChMap
+
+
+def filterImageUserChannels(conn, iids, uids=None, chnames=None):
+    """
+    Queries the database to see which images fit the requested criteria
+    TODO: Check whether this query is correct or not... it might not be
+    """
+    if not iids:
+        return {}
+
+    qs = conn.getQueryService()
+    query = ('select p from Pixels p join '
+             'fetch p.channels as c join '
+             'fetch c.logicalChannel as lc join '
+             'fetch p.image as im '
+             'where im.id in (:iids)')
+
+    params = omero.sys.ParametersI()
+    params.add('iids', wrap([long(u) for u in iids]))
+
+    logger.debug('iids:%s uids:%s chnames:%s', iids, uids, chnames)
+
+    if uids:
+        query += 'and p.details.owner.id in (:uids) '
+        params.add('uids', wrap([long(u) for u in uids]))
+    if chnames:
+        if UNNAMED_CHANNEL in chnames:
+            query += 'and (lc.name in (:chns) or lc.name is NULL) '
+        else:
+            query += 'and lc.name in (:chns) '
+        params.add('chns', wrap([str(chn) for chn in chnames]))
+
+    ps = qs.findAllByQuery(query, params, conn.SERVICE_OPTS)
+
+    def getChName(pixels, c):
+        try:
+            ch = p.getChannel(c)
+        except IndexError:
+            return None
+        if not ch:
+            return None
+        name = ch.getLogicalChannel(c).name
+        if name is None:
+            return UNNAMED_CHANNEL
+        return unwrap(name)
+
+    imChMap = {}
+    for p in ps:
+        iid = unwrap(p.image.id)
+
+        # The HQL query restricted the channel search, so some channels won't
+        # be loaded. Unloaded trailing channels won't be created either.
+        cs = [getChName(p, c) for c in xrange(unwrap(p.getSizeC()))]
+        imChMap[iid] = cs
+    return imChMap
+
+
+def filterByDataset(conn, iids, dids):
+    """
+    Check whether the supplied image ids are contained in one of the specified
+    datasets, given as IDs
+    """
+    qs = conn.getQueryService()
+    query = ('select dl from DatasetImageLink dl '
+             'where dl.parent.id in (:dids) '
+             'and dl.child.id in (:iids) ')
+
+    params = omero.sys.ParametersI()
+    params.add('dids', wrap([long(u) for u in dids]))
+    params.add('iids', wrap([long(u) for u in iids]))
+
+    dls = qs.findAllByQuery(query, params, conn.SERVICE_OPTS)
+    filteredIids = [dl.child.id.val for dl in dls]
+    return filteredIids
 
 
 def listAvailableCZTS(conn, imageId, ftset):
@@ -144,10 +309,6 @@ def right_plugin_search_form (request, conn=None, **kwargs):
     """
     context = {'template': 'searcher/right_plugin_search_form.html'}
 
-    datasets = list(conn.getObjects("Dataset"))
-    datasets.sort(key=lambda x: x.getName() and x.getName().lower())
-    context['datasets'] = datasets
-
     images = []
 
     superIds = request.REQUEST.getlist('imagesuperid')
@@ -183,8 +344,15 @@ def right_plugin_search_form (request, conn=None, **kwargs):
 
     context['images'] = images
 
-    users = getGroupMembers(conn, request)
+    users = getGroupMembers(conn)
     context['users'] = users
+
+    projects, orphanDatasets = getProjectsDatasets(conn)
+    context['projects'] = projects
+    context['datasets'] = orphanDatasets
+
+    context['channelidxs'] = getChannelIndices(conn)
+    context['channelnames'] = getChannelNames(conn)
 
     logger.debug('Context:%s', context)
     return context
@@ -209,12 +377,36 @@ def searchpage( request, iIds=None, dId = None, fset = None, numret = None, negI
     context['fset'] = request.POST.get("featureset_Name")
     context['numret'] = request.POST.get("NumRetrieve")
 
+    enable_filters = request.POST.get("enable_filters") == 'enable'
+    context['enable_filters'] = enable_filters
+
+    logger.debug('enable_filters: %s', enable_filters)
+
     limit_users = request.POST.getlist("limit_users")
     limit_users = [int(x) for x in limit_users]
     context['limit_users'] = limit_users
 
-    users = getGroupMembers(conn, request)
+    limit_datasets = request.POST.getlist("limit_datasets")
+    limit_datasets = [int(x) for x in limit_datasets]
+    context['limit_datasets'] = limit_datasets
+
+    limit_channelidxs = request.POST.getlist("limit_channelidxs")
+    limit_channelidxs = [int(x) for x in limit_channelidxs]
+    context['limit_channelidxs'] = limit_channelidxs
+
+    limit_channelnames = request.POST.getlist("limit_channelnames")
+    limit_channelnames = set(limit_channelnames)
+    context['limit_channelnames'] = limit_channelnames
+
+    users = getGroupMembers(conn, limit_users)
     context['users'] = users
+
+    projects, orphanDatasets = getProjectsDatasets(conn, limit_datasets)
+    context['projects'] = projects
+    context['datasets'] = orphanDatasets
+
+    context['channelidxs'] = getChannelIndices(conn, limit_channelidxs)
+    context['channelnames'] = getChannelNames(conn, limit_channelnames)
 
     superIds = request.POST.getlist("superIds")
     if superIds:
@@ -226,6 +418,12 @@ def searchpage( request, iIds=None, dId = None, fset = None, numret = None, negI
         logger.debug('Got allIDs: %s', allIds)
         idCztPn = getIdCztPnFromImageIds(allIds, request.POST)
         imageIds = idCztPn.keys()
+
+    if not imageIds:
+        # This usually occurs if someone attempts to load one of the internal
+        # OMERO.searcher pages without GET/POST variables.
+        logger.error('No imageIds')
+        return {'template': 'searcher/index.html'}
 
     images = []
     for i in conn.getObjects("Image", imageIds):
@@ -251,6 +449,7 @@ def searchpage( request, iIds=None, dId = None, fset = None, numret = None, negI
 @login_required(setGroupContext=True)
 @render_response()
 def contentsearch( request, conn=None, **kwargs):
+    startTime = datetime.now()
 
     #server_name=request.META['SERVER_NAME']
     #owner=request.session['username']
@@ -261,17 +460,53 @@ def contentsearch( request, conn=None, **kwargs):
     fset = request.POST.get("featureset_Name")
     numret = request.POST.get("NumRetrieve")
     numret = int(numret)
+    enable_filters = request.POST.get("enable_filters") == 'enable'
+    logger.debug('Got enable_filters: %s', enable_filters)
 
     limit_users = request.POST.getlist("limit_users")
-    if len(limit_users) == 0:
+    if enable_filters and len(limit_users) == 0:
         context = {
             'template': 'searcher/contentsearch/search_error.html',
             'message': 'No users selected'
             }
         return context
 
-    limit_users = [int(x) for x in limit_users]
+    limit_users = set(int(x) for x in limit_users)
     logger.debug('Got limit_users: %s', limit_users)
+
+    limit_datasets = request.POST.getlist("limit_datasets")
+    if enable_filters and len(limit_datasets) == 0:
+        context = {
+            'template': 'searcher/contentsearch/search_error.html',
+            'message': 'No datasets selected'
+            }
+        return context
+
+    limit_datasets = set(int(x) for x in limit_datasets)
+    logger.debug('Got limit_datasets: %s', limit_datasets)
+
+    limit_channelidxs = request.POST.getlist("limit_channelidxs")
+    if enable_filters and len(limit_channelidxs) == 0:
+        context = {
+            'template': 'searcher/contentsearch/search_error.html',
+            'message': 'No channel indices selected'
+            }
+        return context
+
+    limit_channelidxs = set(int(x) for x in limit_channelidxs)
+    logger.debug('Got limit_channelidxs: %s', limit_channelidxs)
+
+    limit_channelnames = request.POST.getlist("limit_channelnames")
+    if enable_filters and len(limit_channelnames) == 0:
+        context = {
+            'template': 'searcher/contentsearch/search_error.html',
+            'message': 'No channel names selected'
+            }
+        return context
+
+    limit_channelnames = set(limit_channelnames)
+    logger.debug('Got limit_channelnames: %s', limit_channelnames)
+
 
     superIds = request.POST.getlist("superIds")
     logger.debug('Got superIDs: %s', superIds)
@@ -363,10 +598,25 @@ def contentsearch( request, conn=None, **kwargs):
     logger.debug('contentsearch im_ids_sorted:%s', im_ids_sorted)
 
 
+    def filter_superid(im_id):
+        """
+        Ideally we'd filter before performing the query. However we can't just
+        strip out unwanted rows from the ContentDB because we want to keep the
+        reference image even if it doesn't fit the criteria.
+        E.g. Reference channel 1 against query channel 2.
+        """
+        return int(im_id.split('.')[2]) in limit_channelidxs
+
+    if enable_filters:
+        im_ids_sorted = [sid for sid in im_ids_sorted if filter_superid(sid)]
+    logger.debug('Filtered im_ids_sorted:%s', im_ids_sorted)
+
+
     context = {'template': 'searcher/contentsearch/searchresult.html'}
 
-    def filter_image(im):
-        return im.getOwner().id in limit_users
+    def split_sid(sid):
+        iid, p, c, z, t = sid.split('.')
+        return int(iid), int(p), int(c), int(z), int(t)
 
     def image_batch_load(conn, im_ids_sorted, numret):
         """
@@ -374,50 +624,107 @@ def contentsearch( request, conn=None, **kwargs):
         don't know how many to load, and it's also possible for images to
         have been deleted but remain in the contentDB.
         Read in chunks until we have the required number of images.
+
+        1. Discard sids which aren't in a selected dataset
+        2. Discard sids which aren't
+           * owned by a selected user
+           * contain at least one channel with a selected name
+        3. Retrieve the corresponding image objects
+        4. Build a map of sids to image objects, discarding sids whose images
+           no longer exist
         """
         img_map = {}
 
         # We need to choose the batch size
         # Remember getObjects() returns objects in an unspecified order, so we
         # must iterate through the entire result and re-order
-        batch_size = numret
+        batch_size = max(numret, 100)
 
         i = 0
         while i < len(im_ids_sorted):
-            batch_sids = im_ids_sorted[i:i + batch_size]
-            batch_ids = [int(id.split('.')[0]) for id in batch_sids]
-            batch_ims = conn.getObjects('Image', batch_ids)
-            i += batch_size
+            batch_sids = dict((sid, split_sid(sid)[0])
+                              for sid in im_ids_sorted[i:i + batch_size])
 
-            img_map.update((im.id, im) for im in batch_ims if filter_image(im))
+            if enable_filters:
+                filter1ids = filterByDataset(
+                    conn, batch_sids.values(), limit_datasets)
+
+                imChMap = filterImageUserChannels(
+                    conn, filter1ids, uids=limit_users,
+                    chnames=limit_channelnames)
+
+                # Now discard superids where C does not correspond to a required
+                # channel name
+                batch_filtered_sids = {}
+                for sid in batch_sids:
+                    iid, p, c, z, t = split_sid(sid)
+                    if (iid in imChMap and
+                        imChMap[iid][int(c)] in limit_channelnames):
+                        batch_filtered_sids[sid] = iid
+
+            else:
+                batch_filtered_sids = batch_sids
+
+            if batch_filtered_sids:
+                batch_ims = conn.getObjects(
+                    'Image', batch_filtered_sids.values())
+            else:
+                batch_ims = []
+            iid_ims_map = dict((im.getId(), im) for im in batch_ims)
+
+            logger.debug('image_batch_load filter: %d -> %d -> %d -> %d) ',
+                         len(batch_sids),
+                         len(filter1ids) if enable_filters else -1,
+                         len(imChMap) if enable_filters else -1,
+                         len(iid_ims_map))
+
+            img_map.update((sid, iid_ims_map[iid])
+                           for sid, iid in batch_filtered_sids.iteritems())
+
             if len(img_map) >= numret:
                 break
 
-        logger.debug('img_map:%s', img_map)
+            i += batch_size
+
         return img_map
 
 
-    imgMap = image_batch_load(conn, im_ids_sorted, numret)
+    img_map = image_batch_load(conn, im_ids_sorted, numret)
+    logger.debug('img_map: [%d] %s', len(img_map), img_map)
 
     images = []
     ranki = 0
-    for i in im_ids_sorted:
-        iid = int(i.split(".")[0])
-        if iid in imgMap:
-            img = imgMap[iid]
+    for sid in im_ids_sorted:
+        iid = int(sid.split(".")[0])
+        if sid in img_map:
+            img = img_map[sid]
             # id.px.c.z.t
-            czt = i.split(".", 2)[2]
+            czt = sid.split(".", 2)[2]
             ranki += 1
             images.append({'name':img.getName(),
-                'id':iid,
+                'id': iid,
                 'getPermsCss': img.getPermsCss(),
                 'ranki': ranki,
-                'superid': i,
+                'superid': sid,
                 'czt': czt})
         if ranki == numret:
             break
+
+    if len(images) == 0:
+        context = {'template':
+                       'searcher/contentsearch/search_error.html'}
+        context['message'] = (
+            'No results found. Please try widening your search parameters, '
+            'or calculating features for more images.')
+        return context
+
     context['images'] = images
-    #logger.debug('contentsearch images:%s', images)
+    #logger.debug('context images:%s', images)
+
+    endTime = datetime.now()
+    dd = endTime - startTime
+    context['performance'] = '%d results returned in %d.%03d seconds' % (
+        len(images), dd.seconds, dd.microseconds / 1000)
 
     return context
 

@@ -25,7 +25,14 @@
                     $tbody.append($tr);
                 });
                 $searchImagesTable.prepend($tbody);
+
                 $("#content_search").submit();
+            });
+
+            $("#content_search").submit(function() {
+                $("div#content_details").append(
+                    '<div class="loading_center" style="position:absolute;width:100%;top:0px;background-color:rgba(255,255,255,0.75);"><p>Loading... please wait.</p><img src ="{% static "webgateway/img/spinner_big.gif" %}"/></div>'
+                ).scrollTop(0).scrollLeft(0);
             });
 
             // Form ajax handling - load results to central panel.
@@ -35,6 +42,58 @@
                 },
             })
             .submit();  // on initial load, do first search by submitting immediately
+
+
+            $('input.search_refine_item').change(function() {
+                var all_checked = true;
+                var parent = $(this).parent().parent()
+                parent.children().children('input.search_refine_item').each(function() {
+                    all_checked = all_checked && this.checked;
+                });
+                parent.find('input.search_refine_all').prop('checked', all_checked);
+            });
+
+            $('input.search_refine_all').change(function() {
+                var all_checked = this.checked;
+                $(this).parent().children().children('input.search_refine_item')
+                    .each(function() {
+                        this.checked = all_checked;
+                    });
+            });
+
+
+            $(".search_refine_toggle").click(function(event){
+                event.preventDefault();
+                $(this).next().slideToggle(500, function(){
+                    $(this).prev().text($(this).is(':visible')?
+                        '[\u2013] hide' : '[+] show');
+                })
+            });
+
+            // Hide by default
+
+            $(".search_refine_toggle").next().hide(0, function(){
+                $(this).prev().text('[+] show');
+            });
+
+
+            $("#enable_search_refines").change(function() {
+                if (this.checked) {
+                    $(".search_refine_group").slideDown();
+                }
+                else {
+                    $(".search_refine_group").slideUp();
+                }
+            });
+            if (!$("#enable_search_refines").prop('checked')) {
+                $(".search_refine_group").hide();
+            }
+
+            // Finally we need to set the initial state of the parent 'All'
+            // checkboxes. For now just set a change event on every checkbox.
+            // TODO: We should only trigger a change even once per group
+            $('input.search_refine_item').trigger('change');
+
         });
 
     </script>
@@ -86,37 +145,15 @@
 <div id="searching">
     <div class="left_panel_inner">
 
-    <h1> {% trans "Search again with additional image(s)" %}            <span id="searching_again_description" title="Search again - <small>Performs another round of search by image content. Using the previous settings (selected image(s), featureset, # retrieved images, and dataset), you can include additional images to the search query by selecting images. <br/><br/>
-            For example, if you have some images that you don't like among the current result, you can add those images as negative samples and do another round of search.</small>"><img src="{% static "webclient/images/help16.png" %}" /></span></h1>
+    <h1>{% trans "Search again with additional image(s)" %}</h1>
 
 
     <form id="content_search" class="content_search" method="POST" action="{% url contentsearch %}">
 
         <div>
-            <table class="bk_table">
-                <thead> 
-                    <tr> 
-                        <th width=50%>{% trans "Featureset name" %}</th> 
-                        <th width=50%>{% trans "Dataset" %}</th> 
-                    </tr> 
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>
-                            <input name="featureset_Name" value="{{ fset }}" style="display:none"/>
-                            {{ fset }}
-                        </td>
-                        <td>
-                            {% if dataset %}
-                                {{ dataset.getId }}: {{ dataset.getName }}
-                                <input name="dataset_ID" value="{{ dataset.getId }}" style="display:none"/>
-                            {% else %}
-                                Entire DB
-                            {% endif %}
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+            <label>Feature-set:</label>
+            <input name="featureset_Name" value="{{ fset }}" type="hidden" />
+            {{ fset }}
         </div>
 
         <div>
@@ -130,21 +167,110 @@
         </div>
 
         <div>
-            <label for="limit_users">Filter by users:</label>
-            <div class="search_filter_selector">
-                {% for userid, username in users.items %}
+            <input type="checkbox" id="enable_search_refines"
+                {% if enable_filters %}checked="checked"{% endif %}
+                name="enable_filters" value="enable">Enable
+                additional search filters (may slow down queries).</input>
+        </div>
+
+        <div class="search_refine_group">
+            <label for="limit_users">Filter by user:</label>
+            <a href="#" title="Show/Hide" class="search_refine_toggle"></a>
+            <div style="margin-left:20px">
+                <input type="checkbox" name="limit_users_all"
+                    class="search_refine_all" value="All">All</input>
+
+                {% for user in users %}
+                <div style="margin-left:20px">
+                    <input type="checkbox"
+                        {% if user.2 %}checked="checked"{% endif %}
+                        class="search_refine_item"
+                        name="limit_users" value="{{user.0}}"
+                        >{{user.1}}</input>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="search_refine_group">
+            <label for="limit_datasets">Filter by project/dataset:</label>
+            <a href="#" title="Show/Hide" class="search_refine_toggle"></a>
+            <div style="margin-left:20px">
+
+                {% for proj in projects %}
+                <div>
+                    <input type="checkbox"
+                        class="search_refine_all" name="project"
+                        value="{{proj.0}}">{{proj.1}}</input>
+
+                    {% for dset in proj.2 %}
                     <div style="margin-left:20px">
                         <input type="checkbox"
-                            {% if userid in limit_users %}checked="checked"{% endif %}
-                            name="limit_users" value="{{userid}}">{{username}}
-                        </input>
+                            {% if dset.2 %}checked="checked"{% endif %}
+                            class="search_refine_item" name="limit_datasets"
+                            value="{{dset.0}}">{{dset.1}}</input>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+
+                <div>
+                    <input type="checkbox"
+                        class="search_refine_all" name="project"
+                        value="[No project]">[No project]</input>
+
+                    {% for dset in datasets %}
+                    <div style="margin-left:20px">
+                        <input type="checkbox"
+                            {% if dset.2 %}checked="checked"{% endif %}
+                            class="search_refine_item" name="limit_datasets"
+                            value="{{dset.0}}">{{dset.1}}</input>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="search_refine_group">
+            <label for="limit_channelidxs">Filter by channel index:</label>
+            <a href="#" title="Show/Hide" class="search_refine_toggle"></a>
+            <div style="margin-left:20px">
+                <input type="checkbox" name="limit_channelidxs_all"
+                    class="search_refine_all" value="All">All</input>
+
+                {% for ch in channelidxs %}
+                <div style="margin-left:20px">
+                    <input type="checkbox"
+                        {% if ch.2 %}checked="checked"{% endif %}
+                        class="search_refine_item"
+                        name="limit_channelidxs" value="{{ch.0}}">{{ch.1}}
+                    </input>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="search_refine_group">
+            <label for="limit_channelnames">Filter by channel name:</label>
+            <a href="#" title="Show/Hide" class="search_refine_toggle"></a>
+            <div style="margin-left:20px">
+                <input type="checkbox" name="limit_channelnames_all"
+                    class="search_refine_all" value="All">All</input>
+
+                {% for ch in channelnames %}
+                <div style="margin-left:20px">
+                    <input type="checkbox"
+                        {% if ch.2 %}checked="checked"{% endif %}
+                        class="search_refine_item"
+                        name="limit_channelnames" value="{{ch.0}}"
+                        >{{ch.1}}</input>
                     </div>
                 {% endfor %}
             </div>
         </div>
 
 
-        <input style="float:right" id="doSearch" type="button" value="Do Search"/> 
+        <input style="float:right" id="doSearch" type="button" value="Refine Results"/>
 
         <div style="clear:both; padding:0px"></div>
         <hr/>
