@@ -31,7 +31,7 @@
                         <td>
                             <div style="position:relative">
                                 <input style="display:none" type="text" name="czt-{{ c.id }}" value="{{ c.czt }}" size="3"></input>
-                                <span class="cztEdit" title="Edit Channel/Z/T">{{ c.czt }}</span>
+                                <span class="cztEdit">{{ c.czt }}</span>
                             </div>
                         </td>
                         <td>{{ c.name }}</td>
@@ -47,6 +47,9 @@
                 {% endfor %}
             </tbody>
         </table>
+        <div style="text-align:right">
+            {{ performance }}
+        </div>
     </div>
 
 {% endblock %}

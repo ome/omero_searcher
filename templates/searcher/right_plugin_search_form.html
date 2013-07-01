@@ -65,21 +65,24 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
             $span.text(czt);
         });
 
-        var sfu = $('#search_filter_users');
-        sfu.find('input[name="limit_users_all"]').change(function() {
-            var all_checked = this.checked;
-            sfu.find('input[name="limit_users"]').each(function() {
-                this.checked = all_checked;
-            });
-        });
 
-        sfu.find('input[name="limit_users"]').change(function() {
+        $('input.search_filter_item').change(function() {
             var all_checked = true;
-            sfu.find('input[name="limit_users"]').each(function() {
+            var parent = $(this).parent().parent()
+            parent.children().children('input.search_filter_item').each(function() {
                 all_checked = all_checked && this.checked;
             });
-            $('input[name="limit_users_all"]').prop('checked', all_checked);
+            parent.find('input.search_filter_all').prop('checked', all_checked);
         });
+
+        $('input.search_filter_all').change(function() {
+            var all_checked = this.checked;
+            $(this).parent().children().children('input.search_filter_item')
+                .each(function() {
+                    this.checked = all_checked;
+                });
+        });
+
 
         $(".search_filter_toggle").click(function(event){
             event.preventDefault();
@@ -93,6 +96,24 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
         $(".search_filter_toggle").next().hide(0, function(){
             $(this).prev().text('[+] show');
         });
+
+        $("#enable_search_filters").change(function() {
+            if (this.checked) {
+                $(".search_filter_group").slideDown();
+            }
+            else {
+                $(".search_filter_group").slideUp();
+            }
+        });
+
+        if (!$("#enable_search_filter").prop('checked')) {
+            $(".search_filter_group").hide();
+        }
+
+        // Finally we need to set the initial state of the parent 'All'
+        // checkboxes. For now just set a change event on every checkbox.
+        // TODO: We should only trigger a change even once per group
+        $('input.search_filter_item').trigger('change');
 
     });    
 
@@ -141,42 +162,108 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
         </div>
 
         <div>
-            <label for="search_against">Search Against:</label>
+            <input type="checkbox" id="enable_search_filters"
+                name="enable_filters" value="enable">Enable
+                additional search filters (may slow down queries).</input>
+        </div>
+
+        <div class="search_filter_group">
+            <label for="limit_users">Filter by user:</label>
+            <a href="#" title="Show/Hide" class="search_filter_toggle"></a>
             <div style="margin-left:20px">
-                <div style="float:left">
-                    Entire Database<input type="radio" checked='true' name="search_against" value="db"/>
+                <input type="checkbox" name="limit_users_all"
+                    class="search_filter_all" value="All">All</input>
+
+                {% for user in users %}
+                <div style="margin-left:20px">
+                    <input type="checkbox"
+                        {% if user.2 %}checked="checked"{% endif %}
+                        class="search_filter_item"
+                        name="limit_users" value="{{user.0}}"
+                        >{{ user.1 }}</input>
                 </div>
-                <div style="float:left">
-                    Dataset<input type="radio" name="search_against" value="dataset"/><br/>
-                    <select name="dataset_ID" disabled="true">
-                        {% for d in datasets %}
-                            <option value="{{ d.getId }}">
-                                {{ d.getName }}
-                                {% if d.countChildren %} [{{ d.countChildren }}] {% endif %}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div style="clear:both"></div>
+                {% endfor %}
             </div>
         </div>
 
-        <div id="search_filter_users">
-            <label for="limit_users">Filter by users:</label>
+        <div class="search_filter_group">
+            <label for="limit_datasets">Filter by project/dataset:</label>
             <a href="#" title="Show/Hide" class="search_filter_toggle"></a>
-            <div style="margin-left:20px" class="search_filter_selector">
-                <input type="checkbox" checked="true" name="limit_users_all" value="All">All</input>
+            <div style="margin-left:20px">
+
+                {% for proj in projects %}
                 <div>
-                    {% for userid, username in users.items %}
-                        <div style="margin-left:20px">
-                            <input type="checkbox" checked="checked"
-                                name="limit_users" value="{{userid}}"
-                                >{{ username }}</input>
-                        </div>
+                    <input type="checkbox"
+                        class="search_filter_all" name="project"
+                        value="{{proj.0}}">{{proj.1}}</input>
+
+                    {% for dset in proj.2 %}
+                    <div style="margin-left:20px">
+                        <input type="checkbox"
+                            {% if dset.2 %}checked="checked"{% endif %}
+                            class="search_filter_item" name="limit_datasets"
+                            value="{{dset.0}}">{{ dset.1 }}</input>
+                    </div>
                     {% endfor %}
                 </div>
+                {% endfor %}
+
+                <div>
+                    <input type="checkbox"
+                        class="search_filter_all" name="project"
+                        value="[No project]">[No project]</input>
+
+                    {% for dset in datasets %}
+                    <div style="margin-left:20px">
+                        <input type="checkbox"
+                            {% if dset.2 %}checked="checked"{% endif %}
+                            class="search_filter_item" name="limit_datasets"
+                            value="{{dset.0}}">{{ dset.1 }}</input>
+                    </div>
+                    {% endfor %}
+                </div>
+
             </div>
         </div>
+
+        <div class="search_filter_group">
+            <label for="limit_channelidxs">Filter by channel index:</label>
+            <a href="#" title="Show/Hide" class="search_filter_toggle"></a>
+            <div style="margin-left:20px">
+                <input type="checkbox" name="limit_channelidxs_all"
+                    class="search_filter_all" value="All">All</input>
+
+                {% for ch in channelidxs %}
+                <div style="margin-left:20px">
+                    <input type="checkbox"
+                        {% if ch.2 %}checked="checked"{% endif %}
+                        class="search_filter_item"
+                        name="limit_channelidxs" value="{{ch.0}}"
+                        >{{ ch.1 }}</input>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="search_filter_group">
+            <label for="limit_channelnames">Filter by channel name:</label>
+            <a href="#" title="Show/Hide" class="search_filter_toggle"></a>
+            <div style="margin-left:20px">
+                <input type="checkbox" name="limit_channelnames_all"
+                    class="search_filter_all" value="All">All</input>
+
+                {% for ch in channelnames %}
+                <div style="margin-left:20px">
+                    <input type="checkbox"
+                        {% if ch.2 %}checked="checked"{% endif %}
+                        class="search_filter_item"
+                        name="limit_channelnames" value="{{ch.0}}"
+                        >{{ ch.1 }}</input>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
 
         <input style="float:right" type="submit" value="Do Search"/> 
 
