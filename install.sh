@@ -50,3 +50,6 @@ else
     echo "    omero config set omero.web.apps '[..., \"omero_searcher\"]'"
 fi
 
+echo "If this is a new installation you must create the OMERO.searcher data"
+echo "directory, see $CONFIG"
+
