@@ -1,0 +1,18 @@
+# Note: You might prefer to install the distribution supplied versions
+# of numpy and scipy instead of using pip
+numpy
+scipy
+
+# Note: mahotas requires the freeimage library
+mahotas==0.9.4
+
+milk==0.4.3
+
+pymorph==0.96
+
+pyslic==0.6.1
+
+# This contains several changes not present in the upstream PySLID module
+git+git://github.com/manics/pyslid.git@add_tests_exceptions_tweaks
+
+git+git://github.com/icaoberg/ricerca.git@master
