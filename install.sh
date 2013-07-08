@@ -24,7 +24,8 @@ On Mac OS X it can be installed using homebrew:
 EOF
 
 usage() {
-    echo "USAGE: `basename $0` /path/to/omero/server/"
+    echo "USAGE: `basename $0` OMERO_PREFIX"
+    echo "  OMERO_PREFIX: The root directory of the OMERO server installation"
     exit $1
 }
 
