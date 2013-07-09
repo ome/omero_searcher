@@ -7,15 +7,15 @@ $(document).ready(function() {
         load_tab_content: function(selected, obj_dtype, obj_id) {    // This MUST be defined
             var imageIds = [];
             for (var i=0; i<selected.length; i++) {
-                // IDs will be in the form image-<id> if coming from the
-                // standard middle pane, or image-<id>-<superid> if coming
-                // from the OMERO.searcher middle pane
-                var sid = selected[i]["id"].split('-');
-                if (sid.length > 2) {
-                    imageIds.push(sid[0] + 'superid=' +  sid[2]);
+                // If we got here from the OMERO.searcher middle pane we should
+                // also have the full superid
+                var id = selected[i]["id"];
+                var superid = selected[i]["id_suffix"];
+                if (superid && superid.length > 0) {
+                    imageIds.push(id.split('-', 1) + 'superid=' +  superid);
                 }
                 else {
-                    imageIds.push(sid.join('='));
+                    imageIds.push(id.replace('-', '='));
                 }
             }
             queryString = imageIds.join("&");
