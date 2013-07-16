@@ -54,7 +54,7 @@ pip install -r requirements.txt
 
 if [ -e "$CONFIG" ]; then
     echo "Saving old configuration"
-    OLD_CONFIG=`mktemp -t omero_searcher_config`
+    OLD_CONFIG=`mktemp -t omero_searcher_config.XXXXXX`
     cat "$CONFIG" >> "$OLD_CONFIG"
 fi
 
