@@ -160,13 +160,14 @@
         </div>
 
         <div>
-            <label for="NumRetrieve">Retrieved images:</label>
-            <select name="NumRetrieve">
-                <option value="10" {% ifequal numret '10' %}selected='true'{% endifequal %}>10</option>
-                <option value="20" {% ifequal numret '20' %}selected='true'{% endifequal %}>20</option>
-                <option value="100" {% ifequal numret '100' %}selected='true'{% endifequal %}>100</option>
-                <option value="500" {% ifequal numret '500' %}selected='true'{% endifequal %}>500</option>
-            </select>
+            <label>Retrieved images:
+                <select name="NumRetrieve">
+                    <option {% ifequal numret '10' %}selected='true'{% endifequal %} />10</option>
+                    <option {% ifequal numret '20' %}selected='true'{% endifequal %} />20</option>
+                    <option {% ifequal numret '100' %}selected='true'{% endifequal %} />100</option>
+                    <option {% ifequal numret '500' %}selected='true'{% endifequal %} />500</option>
+                </select>
+            </label>
         </div>
 
         <div>
