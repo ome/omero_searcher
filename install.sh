@@ -12,7 +12,8 @@ found.
 
 This script will attempt to install several Python dependencies. It
 is highly recommended that you first create and activate a Python
-virtualenv.
+virtualenv. This virtualenv must contain all the usual OMERO.server
+requirements.
 
 The Python mahotas module requires the freeimage library to be
 installed in advance. On CentOS this is available from the EPEL
@@ -21,12 +22,40 @@ repository:
 On Mac OS X it can be installed using homebrew:
     brew install freeimage
 
+Prerequisites include the PIL, numpy and scipy Python modules.
+Automatic installation of these modules sometimes fails, so it is
+normally easiest to install a distribution supplied version if
+available. For example on CentOS:
+    yum install python-imaging numpy scipy
+Alternatively install manually using pip:
+    pip install PIL
+    pip install numpy
+    pip install scipy
+
+OMERO.tables must be enabled and running on OMERO.server. It is
+normally automatically enabled if Pytables is installed, but if
+you see errors when running the OMERO.searcher feature calculation
+check that it is running.
+
+
 EOF
 
 usage() {
     echo "USAGE: `basename $0` OMERO_PREFIX"
     echo "  OMERO_PREFIX: The root directory of the OMERO server installation"
     exit $1
+}
+
+check_py_mod() {
+    set +e
+    python -c "import $1"
+    if [ $? -ne 0 ]; then
+        echo "$2"
+        if [ $3 -gt 0 ]; then
+            exit $3
+        fi
+    fi
+    set -e
 }
 
 if [ $# -eq 0 -o "$1" = "-h" ]; then
@@ -48,6 +77,15 @@ OMERO_SERVER="$1"
 SCRIPT_DEST="$OMERO_SERVER/lib/scripts/searcher"
 WEB_DEST="$OMERO_SERVER/lib/python/omeroweb/omero_searcher"
 CONFIG="$WEB_DEST/omero_searcher_config.py"
+
+echo "Checking for PIL, numpy and scipy"
+check_py_mod PIL "ERROR: Please install PIL" 1
+check_py_mod numpy "ERROR: Please install numpy" 1
+check_py_mod scipy "ERROR: Please install scipy" 1
+check_py_mod tables \
+"WARNING: Pytables appears to be missing. If OMERO.tables is running
+on a different server this doesn't matter, otherwise please check
+OMERO.tables is running." 0
 
 echo "Installing python dependencies"
 pip install -r requirements.txt
