@@ -17,6 +17,7 @@
                     <th width="30%">{% trans "Name" %}</th>
                     <th width="10%">{% trans "Negative" %}</th>
                     <th width="10%">{% trans "Positive" %}</th>
+                    <th width="5%">Score</th>
                 </tr> 
             </thead>
             <tbody>
@@ -43,6 +44,7 @@
                         <td align="center">
                             <input type="radio" name="posNeg-{{ c.superid }}" value="pos" />
                         </td> 
+                        <td class="ranking">{{ c.score }}</td>
                     </tr>
                 {% endfor %}
             </tbody>

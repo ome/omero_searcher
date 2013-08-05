@@ -12,6 +12,7 @@
 import logging
 from collections import defaultdict
 from datetime import datetime
+from itertools import izip
 from operator import itemgetter
 
 from omeroweb.webclient.decorators import login_required, render_response
@@ -594,8 +595,13 @@ def contentsearch( request, conn=None, **kwargs):
         logger.error(str(e))
         raise
 
-    im_ids_sorted = [r[0] for r in final_result]
+    im_ids_sorted = [r[0] for r in final_result[0]]
+    if final_result[1]:
+        im_scores = dict(izip(im_ids_sorted, final_result[1]))
+    else:
+        im_scores = dict(izip(im_ids_sorted, [0] * len(im_ids_sorted)))
     logger.debug('contentsearch im_ids_sorted:%s', im_ids_sorted)
+    logger.debug('contentsearch im_scores:%s', im_scores)
 
 
     def filter_superid(im_id):
@@ -701,12 +707,15 @@ def contentsearch( request, conn=None, **kwargs):
             # id.px.c.z.t
             czt = sid.split(".", 2)[2]
             ranki += 1
-            images.append({'name':img.getName(),
-                'id': iid,
-                'getPermsCss': img.getPermsCss(),
-                'ranki': ranki,
-                'superid': sid,
-                'czt': czt})
+            images.append({
+                    'name':img.getName(),
+                    'id': iid,
+                    'getPermsCss': img.getPermsCss(),
+                    'ranki': ranki,
+                    'superid': sid,
+                    'czt': czt,
+                    'score': im_scores[sid],
+                    })
         if ranki == numret:
             break
 
