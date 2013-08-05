@@ -464,6 +464,9 @@ def contentsearch( request, conn=None, **kwargs):
     enable_filters = request.POST.get("enable_filters") == 'enable'
     logger.debug('Got enable_filters: %s', enable_filters)
 
+    return_csv = request.POST.get("return_csv") == 'csv'
+    logger.debug('Got return_csv: %s', return_csv)
+
     limit_users = request.POST.getlist("limit_users")
     if enable_filters and len(limit_users) == 0:
         context = {
@@ -618,7 +621,10 @@ def contentsearch( request, conn=None, **kwargs):
     logger.debug('Filtered im_ids_sorted:%s', im_ids_sorted)
 
 
-    context = {'template': 'searcher/contentsearch/searchresult.html'}
+    if return_csv:
+        context = {'template': 'searcher/contentsearch/searchresult.csv'}
+    else:
+        context = {'template': 'searcher/contentsearch/searchresult.html'}
 
     def split_sid(sid):
         iid, p, c, z, t = sid.split('.')
