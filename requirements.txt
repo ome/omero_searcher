@@ -10,4 +10,4 @@
 git+git://github.com/manics/pyslid.git@merge_all
 
 
-git+git://github.com/icaoberg/ricerca.git@master
+git+git://github.com/manics/ricerca.git@return_scores
