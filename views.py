@@ -15,6 +15,10 @@ from datetime import datetime
 from itertools import izip
 from operator import itemgetter
 
+# These two are needed for the CSV export
+from django.http import HttpResponse
+from django.template import loader, Context
+
 from omeroweb.webclient.decorators import login_required, render_response
 from webclient.webclient_gateway import OmeroWebGateway
 
@@ -464,9 +468,6 @@ def contentsearch( request, conn=None, **kwargs):
     enable_filters = request.POST.get("enable_filters") == 'enable'
     logger.debug('Got enable_filters: %s', enable_filters)
 
-    return_csv = request.POST.get("return_csv") == 'csv'
-    logger.debug('Got return_csv: %s', return_csv)
-
     limit_users = request.POST.getlist("limit_users")
     if enable_filters and len(limit_users) == 0:
         context = {
@@ -621,10 +622,7 @@ def contentsearch( request, conn=None, **kwargs):
     logger.debug('Filtered im_ids_sorted:%s', im_ids_sorted)
 
 
-    if return_csv:
-        context = {'template': 'searcher/contentsearch/searchresult.csv'}
-    else:
-        context = {'template': 'searcher/contentsearch/searchresult.html'}
+    context = {'template': 'searcher/contentsearch/searchresult.html'}
 
     def split_sid(sid):
         iid, p, c, z, t = sid.split('.')
@@ -741,7 +739,44 @@ def contentsearch( request, conn=None, **kwargs):
     context['performance'] = '%d results returned in %d.%03d seconds' % (
         len(images), dd.seconds, dd.microseconds / 1000)
 
+    # Save the search results in case we need them for export
+    request.session['OMEROsearcher:LastImageResults'] = context['images']
     return context
+
+
+@login_required(setGroupContext=True)
+@render_response()
+def exportsearch(request, conn=None, **kwargs):
+    images = request.session.get('OMEROsearcher:LastImageResults')
+    if not images:
+        # TODO: Handle this with a proper error message
+        raise Exception('Last search results are empty.')
+
+    imwraps = conn.getObjects('Image', (im['id'] for im in images))
+    img_map = dict((imwrap.id, imwrap) for imwrap in imwraps)
+
+    for im in images:
+        logger.debug('Image %s', im)
+        # Get the name of the first parent
+        im['parentid'] = None
+        im['parenttype'] = None
+        im['parentname'] = None
+        parents = img_map[im['id']].listParents()
+        if parents:
+            p = parents[0]
+            im['parentid'] = p.id
+            im['parenttype'] = p.OMERO_CLASS
+            im['parentname'] = p.name
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="searchresults.csv"'
+
+    t = loader.get_template('searcher/contentsearch/searchresult.csv')
+    c = Context({
+            'images': images,
+    })
+    response.write(t.render(c))
+    return response
 
 
 @login_required()

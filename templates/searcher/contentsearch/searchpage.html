@@ -303,11 +303,6 @@
         </div>
 
 
-        <div>
-            <input type="checkbox" id="return_csv" name="return_csv"
-                value="csv">CSV</input>
-        </div>
-
         <input style="float:right" id="doSearch" type="button" value="Refine Results"/>
 
         <div style="clear:both; padding:0px"></div>
@@ -346,6 +341,14 @@
                 {% endfor %}
             </tbody>
         </table>
+    </form>
+
+    <form id="export_search" class="content_search" method="POST"
+        action="{% url exportsearch %}">
+        <label>Export the most recent search as a CSV file
+            <input style="float:right" id="doExport" type="submit"
+                value="Export last search" />
+        </label>
     </form>
 
     </div>

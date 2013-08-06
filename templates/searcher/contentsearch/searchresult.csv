@@ -1,5 +1,3 @@
-<textarea readonly="true" style="width:100%; height:100%; border-width:0; padding:0;">
-ImageID,ImageSID,Rank,CZT,Name,Score
-{% for c in images %}{{ c.id }},"{{ c.superid }}",{{ c.ranki }},"{{ c.czt }}","{{ c.name }}",{{ c.score }}
+ImageID,ImageSID,Rank,CZT,Name,Score,ParentID,ParentType,ParentName
+{% for c in images %}{{ c.id }},"{{ c.superid }}",{{ c.ranki }},"{{ c.czt }}","{{ c.name }}",{{ c.score }},"{{ c.parentid }}","{{ c.parenttype }}","{{ c.parentname }}"
 {% endfor %}
-</textarea>
