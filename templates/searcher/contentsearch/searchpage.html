@@ -343,12 +343,15 @@
         </table>
     </form>
 
+    <hr style="clear:both"/>
+
     <form id="export_search" class="content_search" method="POST"
         action="{% url exportsearch %}">
-        <label>Export the most recent search as a CSV file
-            <input style="float:right" id="doExport" type="submit"
-                value="Export last search" />
+        <label for="doExport">
+            Export the most recent search results to a CSV file
         </label>
+        <input style="float:right" id="doExport" type="submit"
+            value="Export results" />
     </form>
 
     </div>
