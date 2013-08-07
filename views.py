@@ -756,7 +756,6 @@ def exportsearch(request, conn=None, **kwargs):
     img_map = dict((imwrap.id, imwrap) for imwrap in imwraps)
 
     for im in images:
-        logger.debug('Image %s', im)
         # Get the name of the first parent
         im['parentid'] = None
         im['parenttype'] = None
@@ -775,6 +774,8 @@ def exportsearch(request, conn=None, **kwargs):
     c = Context({
             'images': images,
     })
+
+    logger.debug('Exporting search results: %s', images)
     response.write(t.render(c))
     return response
 
