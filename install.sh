@@ -110,7 +110,7 @@ cp -a scripts/* "$SCRIPT_DEST"
 
 echo "Installing web-app"
 mkdir "$WEB_DEST"
-cp -a *.py templates "$WEB_DEST"
+cp -a *.py templates templatetags "$WEB_DEST"
 
 if [ -n "$OLD_CONFIG" ]; then
     echo "Restoring previous configuration"

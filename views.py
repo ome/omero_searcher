@@ -12,7 +12,12 @@
 import logging
 from collections import defaultdict
 from datetime import datetime
+from itertools import izip
 from operator import itemgetter
+
+# These two are needed for the CSV export
+from django.http import HttpResponse
+from django.template import loader, Context
 
 from omeroweb.webclient.decorators import login_required, render_response
 from webclient.webclient_gateway import OmeroWebGateway
@@ -594,8 +599,13 @@ def contentsearch( request, conn=None, **kwargs):
         logger.error(str(e))
         raise
 
-    im_ids_sorted = [r[0] for r in final_result]
+    im_ids_sorted = [r[0] for r in final_result[0]]
+    if final_result[1]:
+        im_scores = dict(izip(im_ids_sorted, final_result[1]))
+    else:
+        im_scores = dict(izip(im_ids_sorted, [0] * len(im_ids_sorted)))
     logger.debug('contentsearch im_ids_sorted:%s', im_ids_sorted)
+    logger.debug('contentsearch im_scores:%s', im_scores)
 
 
     def filter_superid(im_id):
@@ -701,12 +711,15 @@ def contentsearch( request, conn=None, **kwargs):
             # id.px.c.z.t
             czt = sid.split(".", 2)[2]
             ranki += 1
-            images.append({'name':img.getName(),
-                'id': iid,
-                'getPermsCss': img.getPermsCss(),
-                'ranki': ranki,
-                'superid': sid,
-                'czt': czt})
+            images.append({
+                    'name':img.getName(),
+                    'id': iid,
+                    'getPermsCss': img.getPermsCss(),
+                    'ranki': ranki,
+                    'superid': sid,
+                    'czt': czt,
+                    'score': im_scores[sid],
+                    })
         if ranki == numret:
             break
 
@@ -726,7 +739,45 @@ def contentsearch( request, conn=None, **kwargs):
     context['performance'] = '%d results returned in %d.%03d seconds' % (
         len(images), dd.seconds, dd.microseconds / 1000)
 
+    # Save the search results in case we need them for export
+    request.session['OMEROsearcher:LastImageResults'] = context['images']
     return context
+
+
+@login_required(setGroupContext=True)
+@render_response()
+def exportsearch(request, conn=None, **kwargs):
+    images = request.session.get('OMEROsearcher:LastImageResults')
+    if not images:
+        # TODO: Handle this with a proper error message
+        raise Exception('Last search results are empty.')
+
+    imwraps = conn.getObjects('Image', (im['id'] for im in images))
+    img_map = dict((imwrap.id, imwrap) for imwrap in imwraps)
+
+    for im in images:
+        # Get the name of the first parent
+        im['parentid'] = None
+        im['parenttype'] = None
+        im['parentname'] = None
+        parents = img_map[im['id']].listParents()
+        if parents:
+            p = parents[0]
+            im['parentid'] = p.id
+            im['parenttype'] = p.OMERO_CLASS
+            im['parentname'] = p.name
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="searchresults.csv"'
+
+    t = loader.get_template('searcher/contentsearch/searchresult.csv')
+    c = Context({
+            'images': images,
+    })
+
+    logger.debug('Exporting search results: %s', images)
+    response.write(t.render(c))
+    return response
 
 
 @login_required()

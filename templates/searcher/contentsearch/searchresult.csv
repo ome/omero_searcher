@@ -1,0 +1,3 @@
+{%load omero_searcher_filters %}{% autoescape off %}ImageID,ImageSID,Rank,CZT,Name,Score,ParentID,ParentType,ParentName
+{% for c in images %}{{ c.id }},"{{ c.superid }}",{{ c.ranki }},"{{ c.czt }}","{{ c.name|escape_csv }}",{{ c.score }},"{{ c.parentid }}","{{ c.parenttype }}","{{ c.parentname|escape_csv }}"
+{% endfor %}{% endautoescape %}
