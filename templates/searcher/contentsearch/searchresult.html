@@ -17,6 +17,7 @@
                     <th width="30%">{% trans "Name" %}</th>
                     <th width="10%">{% trans "Negative" %}</th>
                     <th width="10%">{% trans "Positive" %}</th>
+                    <th width="5%">Score</th>
                 </tr> 
             </thead>
             <tbody>
@@ -30,19 +31,20 @@
                         <td class="ranking">{{ c.ranki }}</td>
                         <td>
                             <div style="position:relative">
-                                <input style="display:none" type="text" name="czt-{{ c.id }}" value="{{ c.czt }}" size="3"></input>
+                                <input style="display:none" type="text" name="czt-{{ c.id }}" value="{{ c.czt }}" size="3" />
                                 <span class="cztEdit">{{ c.czt }}</span>
                             </div>
                         </td>
                         <td>{{ c.name }}</td>
                         <td align="center">
-                            <input type="radio" name="posNeg-{{ c.superid }}" value="neg">
+                            <input type="radio" name="posNeg-{{ c.superid }}" value="neg" />
                             <!-- 'type' span shown when we move row to left panel -->
                             <span class="posNegType" style="display:none">+</span>
                         </td> 
                         <td align="center">
-                            <input type="radio" name="posNeg-{{ c.superid }}" value="pos">
+                            <input type="radio" name="posNeg-{{ c.superid }}" value="pos" />
                         </td> 
+                        <td class="ranking">{{ c.score }}</td>
                     </tr>
                 {% endfor %}
             </tbody>

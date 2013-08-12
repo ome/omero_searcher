@@ -46,16 +46,18 @@
 
             $('input.search_refine_item').change(function() {
                 var all_checked = true;
-                var parent = $(this).parent().parent()
-                parent.children().children('input.search_refine_item').each(function() {
-                    all_checked = all_checked && this.checked;
-                });
+                var parent = $(this).parent().parent().parent()
+                parent.children().children()
+                    .children('input.search_refine_item').each(function() {
+                        all_checked = all_checked && this.checked;
+                    });
                 parent.find('input.search_refine_all').prop('checked', all_checked);
             });
 
             $('input.search_refine_all').change(function() {
                 var all_checked = this.checked;
-                $(this).parent().children().children('input.search_refine_item')
+                $(this).parent().parent()
+                    .children().children().children('input.search_refine_item')
                     .each(function() {
                         this.checked = all_checked;
                     });
@@ -151,80 +153,101 @@
     <form id="content_search" class="content_search" method="POST" action="{% url contentsearch %}">
 
         <div>
-            <label>Feature-set:</label>
-            <input name="featureset_Name" value="{{ fset }}" type="hidden" />
+            <label>Feature-set:
+                <input name="featureset_Name" value="{{ fset }}" type="hidden" />
+            </label>
             {{ fset }}
         </div>
 
         <div>
-            <label for="NumRetrieve">Retrieved images:</label>
-            <select name="NumRetrieve">
-                <option value="10" {% ifequal numret '10' %}selected='true'{% endifequal %}>10</option>
-                <option value="20" {% ifequal numret '20' %}selected='true'{% endifequal %}>20</option>
-                <option value="100" {% ifequal numret '100' %}selected='true'{% endifequal %}>100</option>
-                <option value="500" {% ifequal numret '500' %}selected='true'{% endifequal %}>500</option>
-            </select>
+            <label>Retrieved images:
+                <select name="NumRetrieve">
+                    <option {% ifequal numret '10' %}selected='true'{% endifequal %} />10</option>
+                    <option {% ifequal numret '20' %}selected='true'{% endifequal %} />20</option>
+                    <option {% ifequal numret '100' %}selected='true'{% endifequal %} />100</option>
+                    <option {% ifequal numret '500' %}selected='true'{% endifequal %} />500</option>
+                </select>
+            </label>
         </div>
 
         <div>
-            <input type="checkbox" id="enable_search_refines"
-                {% if enable_filters %}checked="checked"{% endif %}
-                name="enable_filters" value="enable">Enable
-                additional search filters (may slow down queries).</input>
+            <label>
+                <input type="checkbox" id="enable_search_refines"
+                    {% if enable_filters %}checked="checked"{% endif %}
+                    name="enable_filters" value="enable" />
+                Enable additional search filters (may slow down queries).
+            </label>
         </div>
 
         <div class="search_refine_group">
-            <label for="limit_users">Filter by user:</label>
+            <label>Filter by user:</label>
             <a href="#" title="Show/Hide" class="search_refine_toggle"></a>
             <div style="margin-left:20px">
-                <input type="checkbox" name="limit_users_all"
-                    class="search_refine_all" value="All">All</input>
+                <label>
+                    <input type="checkbox" name="limit_users_all"
+                        class="search_refine_all" value="All" />
+                    All
+                </label>
 
                 {% for user in users %}
                 <div style="margin-left:20px">
-                    <input type="checkbox"
-                        {% if user.2 %}checked="checked"{% endif %}
-                        class="search_refine_item"
-                        name="limit_users" value="{{user.0}}"
-                        >{{user.1}}</input>
+                    <label>
+                        <input type="checkbox"
+                            {% if user.2 %}checked="checked"{% endif %}
+                            class="search_refine_item"
+                            name="limit_users" value="{{user.0}}" />
+                        {{user.1}}
+                    </label>
                 </div>
                 {% endfor %}
             </div>
         </div>
 
         <div class="search_refine_group">
-            <label for="limit_datasets">Filter by project/dataset:</label>
+            <label>Filter by project/dataset:</label>
             <a href="#" title="Show/Hide" class="search_refine_toggle"></a>
             <div style="margin-left:20px">
 
                 {% for proj in projects %}
                 <div>
-                    <input type="checkbox"
-                        class="search_refine_all" name="project"
-                        value="{{proj.0}}">{{proj.1}}</input>
+                    <label>
+                        <input type="checkbox"
+                            class="search_refine_all" name="project"
+                            value="{{proj.0}}" />
+                        {{proj.1}}
+                    </label>
 
                     {% for dset in proj.2 %}
                     <div style="margin-left:20px">
-                        <input type="checkbox"
-                            {% if dset.2 %}checked="checked"{% endif %}
-                            class="search_refine_item" name="limit_datasets"
-                            value="{{dset.0}}">{{dset.1}}</input>
+                        <label>
+                            <input type="checkbox"
+                                {% if dset.2 %}checked="checked"{% endif %}
+                                class="search_refine_item" name="limit_datasets"
+                                value="{{dset.0}}" />
+                            {{dset.1}}
+                        </label>
                     </div>
                     {% endfor %}
                 </div>
                 {% endfor %}
 
                 <div>
-                    <input type="checkbox"
-                        class="search_refine_all" name="project"
-                        value="[No project]">[No project]</input>
+                    <label>
+                        <input type="checkbox"
+                            class="search_refine_all" name="project"
+                            value="[No project]" />
+                        [No project]
+                    </label>
 
                     {% for dset in datasets %}
                     <div style="margin-left:20px">
-                        <input type="checkbox"
-                            {% if dset.2 %}checked="checked"{% endif %}
-                            class="search_refine_item" name="limit_datasets"
-                            value="{{dset.0}}">{{dset.1}}</input>
+                        <label>
+                            <input type="checkbox"
+                                {% if dset.2 %}checked="checked"{% endif %}
+                                class="search_refine_item" name="limit_datasets"
+                                value="{{dset.0}}" />
+                            {{dset.1}}
+                        </label>
                     </div>
                     {% endfor %}
                 </div>
@@ -232,39 +255,49 @@
         </div>
 
         <div class="search_refine_group">
-            <label for="limit_channelidxs">Filter by channel index:</label>
+            <label>Filter by channel index:</label>
             <a href="#" title="Show/Hide" class="search_refine_toggle"></a>
             <div style="margin-left:20px">
-                <input type="checkbox" name="limit_channelidxs_all"
-                    class="search_refine_all" value="All">All</input>
+                <label>
+                    <input type="checkbox" name="limit_channelidxs_all"
+                        class="search_refine_all" value="All" />
+                    All
+                </label>
 
                 {% for ch in channelidxs %}
                 <div style="margin-left:20px">
-                    <input type="checkbox"
-                        {% if ch.2 %}checked="checked"{% endif %}
-                        class="search_refine_item"
-                        name="limit_channelidxs" value="{{ch.0}}">{{ch.1}}
-                    </input>
+                    <label>
+                        <input type="checkbox"
+                            {% if ch.2 %}checked="checked"{% endif %}
+                            class="search_refine_item"
+                            name="limit_channelidxs" value="{{ch.0}}" />
+                        {{ch.1}}
+                    </label>
                 </div>
                 {% endfor %}
             </div>
         </div>
 
         <div class="search_refine_group">
-            <label for="limit_channelnames">Filter by channel name:</label>
+            <label>Filter by channel name:</label>
             <a href="#" title="Show/Hide" class="search_refine_toggle"></a>
             <div style="margin-left:20px">
-                <input type="checkbox" name="limit_channelnames_all"
-                    class="search_refine_all" value="All">All</input>
+                <label>
+                    <input type="checkbox" name="limit_channelnames_all"
+                        class="search_refine_all" value="All" />
+                    All
+                </label>
 
                 {% for ch in channelnames %}
                 <div style="margin-left:20px">
-                    <input type="checkbox"
-                        {% if ch.2 %}checked="checked"{% endif %}
-                        class="search_refine_item"
-                        name="limit_channelnames" value="{{ch.0}}"
-                        >{{ch.1}}</input>
-                    </div>
+                    <label>
+                        <input type="checkbox"
+                            {% if ch.2 %}checked="checked"{% endif %}
+                            class="search_refine_item"
+                            name="limit_channelnames" value="{{ch.0}}" />
+                        {{ch.1}}
+                    </label>
+                </div>
                 {% endfor %}
             </div>
         </div>
@@ -308,6 +341,17 @@
                 {% endfor %}
             </tbody>
         </table>
+    </form>
+
+    <hr style="clear:both"/>
+
+    <form id="export_search" class="content_search" method="POST"
+        action="{% url exportsearch %}">
+        <label for="doExport">
+            Export the most recent search results to a CSV file
+        </label>
+        <input style="float:right" id="doExport" type="submit"
+            value="Export results" />
     </form>
 
     </div>
