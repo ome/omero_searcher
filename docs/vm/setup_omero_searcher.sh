@@ -9,6 +9,8 @@ set -e -u -x
 # Note OMERO_PREFIX should be set by the caller, the set -e -u ensures
 # the echo will fail if its not set
 SEARCHER_JOB=${SEARCHER_JOB:-"ANALYSIS-OMERO-SEARCHER-merge"}
+PYSLID_JOB=${PYSLID_JOB:-"ANALYSIS-OMERO-PYSLID-merge"}
+RICERCA_JOB=${RICERCA_JOB:-"ANALYSIS-OMERO-RICERCA-merge"}
 PYSLID_DATA_DIR=${PYSLID_DATA_DIR:-"/home/omero/pyslid.data"}
 
 echo "OMERO_PREFIX=${OMERO_PREFIX}"
@@ -16,6 +18,8 @@ echo "SEARCHER_JOB=${SEARCHER_JOB}"
 echo "PYSLID_DATA_DIR=${PYSLID_DATA_DIR}"
 
 OMERO_BUILD_URL="http://hudson.openmicroscopy.org.uk/job/$SEARCHER_JOB/lastSuccessfulBuild"
+RICERCA_BUILD_URL="http://hudson.openmicroscopy.org.uk/job/$RICERCA_JOB/lastSuccessfulBuild"
+PYSLID_BUILD_URL="http://hudson.openmicroscopy.org.uk/job/$PYSLID_JOB/lastSuccessfulBuild"
 
 readAPIValue() {
     URL=$1; shift
@@ -36,8 +40,15 @@ cd $DL_FOLDER
 sudo apt-get install -qy libfreeimage3
 
 
-# Bypass pip in install.sh, use sudo pip instead
-sudo pip install -r requirements.txt
+URL=`readAPIValue $RICERCA_BUILD_URL"/api/xml?xpath=/freeStyleBuild/url"`
+FILE=`readAPIValue $RICERCA_BUILD_URL"/api/xml?xpath=//relativePath[contains(.,'ricerca')]"`
+sudo pip install "${URL}artifact/${FILE}"
+
+URL=`readAPIValue $PYSLID_BUILD_URL"/api/xml?xpath=/freeStyleBuild/url"`
+FILE=`readAPIValue $PYSLID_BUILD_URL"/api/xml?xpath=//relativePath[contains(.,'pyslid')]"`
+sudo pip install "${URL}artifact/${FILE}"
+
+# Disable dependencies since we've installed them above
 ./install.sh "$OMERO_PREFIX" --nodeps
 
 mkdir -p "$PYSLID_DATA_DIR"
