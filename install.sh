@@ -41,8 +41,9 @@ check that it is running.
 EOF
 
 usage() {
-    echo "USAGE: `basename $0` OMERO_PREFIX"
+    echo "USAGE: `basename $0` OMERO_PREFIX [--nodeps]"
     echo "  OMERO_PREFIX: The root directory of the OMERO server installation"
+    echo "  --nodeps: Don't install requirements"
     exit $1
 }
 
@@ -62,9 +63,13 @@ if [ $# -eq 0 -o "$1" = "-h" ]; then
     usage 0
 fi
 
+NODEPS=0
 if [ $# -ne 1 ]; then
-    echo "Unexpected arguments"
-    usage 2
+    if [ $# -gt 2 -o "$2" != "--nodeps" ]; then
+        echo "Unexpected arguments"
+        usage 2
+    fi
+    NODEPS=1
 fi
 
 if [ ! -d "$1" ]; then
@@ -78,17 +83,21 @@ SCRIPT_DEST="$OMERO_SERVER/lib/scripts/searcher"
 WEB_DEST="$OMERO_SERVER/lib/python/omeroweb/omero_searcher"
 CONFIG="$WEB_DEST/omero_searcher_config.py"
 
-echo "Checking for PIL, numpy and scipy"
-check_py_mod PIL "ERROR: Please install PIL" 1
-check_py_mod numpy "ERROR: Please install numpy" 1
-check_py_mod scipy "ERROR: Please install scipy" 1
-check_py_mod tables \
+if [ $NODEPS -eq 1 ]; then
+    echo "Skipping dependencies"
+else
+    echo "Checking for PIL, numpy and scipy"
+    check_py_mod PIL "ERROR: Please install PIL" 1
+    check_py_mod numpy "ERROR: Please install numpy" 1
+    check_py_mod scipy "ERROR: Please install scipy" 1
+    check_py_mod tables \
 "WARNING: Pytables appears to be missing. If OMERO.tables is running
 on a different server this doesn't matter, otherwise please check
 OMERO.tables is running." 0
 
-echo "Installing python dependencies"
-pip install -r requirements.txt
+    echo "Installing python dependencies"
+    pip install -r requirements.txt
+fi
 
 if [ -e "$CONFIG" ]; then
     echo "Saving old configuration"
