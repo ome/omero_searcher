@@ -24,7 +24,7 @@ readAPIValue() {
 
 echo "Grabbing last successful Hudson build of OMERO.searcher"
 URL=`readAPIValue $OMERO_BUILD_URL"/api/xml?xpath=/freeStyleBuild/url"`
-FILE=`readAPIValue $OMERO_BUILD_URL"/api/xml?xpath=//relativePath[contains(.,'searcher')]"`
+FILE=`readAPIValue $OMERO_BUILD_URL"/api/xml?xpath=//relativePath[contains(.,'OMERO-searcher')]"`
 
 wget -Nq "${URL}artifact/${FILE}"
 
@@ -36,9 +36,9 @@ cd $DL_FOLDER
 sudo apt-get install -qy libfreeimage3
 
 
-# Need to wrap pip with sudo
-sed -i.bak -e "s/^pip /sudo -S pip /" install.sh
-./install.sh "$OMERO_PREFIX"
+# Bypass pip in install.sh, use sudo pip instead
+sudo pip install -r requirements.txt
+./install.sh "$OMERO_PREFIX" --nodeps
 
 mkdir -p "$PYSLID_DATA_DIR"
 sed -i.bak -e \
