@@ -37,8 +37,16 @@ DL_FOLDER=OMERO-searcher
 unzip -o $DL_ARCHIVE
 cd $DL_FOLDER
 
-sudo apt-get install -qy libfreeimage3
-
+if [ -f /usr/bin/apt-get ]; then
+    # Debian
+    sudo apt-get install -qy libfreeimage3
+elif [ -f /usr/bin/yum ]; then
+    # Redhat
+    sudo yum -y install freeimage
+else
+    echo "Unknown" package manager
+    exit 2
+fi
 
 URL=`readAPIValue $RICERCA_BUILD_URL"/api/xml?xpath=/freeStyleBuild/url"`
 FILE=`readAPIValue $RICERCA_BUILD_URL"/api/xml?xpath=//relativePath[contains(.,'ricerca')]"`
@@ -56,6 +64,6 @@ sed -i.bak -e \
     "s%^omero_contentdb_path = .*$%omero_contentdb_path = \\'$PYSLID_DATA_DIR\\'%" \
     "$OMERO_PREFIX/lib/python/omeroweb/omero_searcher/omero_searcher_config.py"
 
-sudo /etc/init.d/omero restart
-sudo /etc/init.d/omero-web restart
+sudo service omero restart
+sudo service omero-web restart
 
