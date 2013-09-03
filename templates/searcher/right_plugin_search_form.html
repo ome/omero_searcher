@@ -148,8 +148,9 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
         <div>
             <label>Featureset Name:
                 <select id="featureset" name="featureset_Name">
-                    <option value="slf33">slf33</option>
-                    <option value="slf34">slf34</option>
+                    {% for ftset in featuresets %}
+                    <option value="{{ ftset }}">{{ ftset }}</option>
+                    {% endfor %}
                 </select>
             </label>
         </div>

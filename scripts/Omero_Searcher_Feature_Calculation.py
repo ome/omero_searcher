@@ -8,6 +8,7 @@ import sys
 
 import pyslid
 from omeroweb.omero_searcher.omero_searcher_config import omero_contentdb_path
+from omeroweb.omero_searcher.omero_searcher_config import enabled_featuresets
 pyslid.database.direct.set_contentdb_path(omero_contentdb_path)
 
 
@@ -149,8 +150,6 @@ def extractFeatures(conn, image, scale, ftset, scaleSet,
             return message + m
         readoutCh = [channels[1] - IDX_OFFSET]
 
-    if ftset == 'slf33':
-        otherChs = []
     if ftset == 'slf34':
         if (channels[2] < IDX_OFFSET or
             channels[2] >= image.getSizeC() + IDX_OFFSET):
@@ -158,6 +157,8 @@ def extractFeatures(conn, image, scale, ftset, scaleSet,
             sys.stderr.write(m)
             return message + m
         otherChs = [channels[2] - IDX_OFFSET]
+    else:
+        otherChs = []
 
     for c in readoutCh:
         chs = [c] + otherChs
@@ -280,8 +281,8 @@ def runScript():
 
         scripts.String('Feature_set', optional=False, grouping='2',
                        description='SLF set',
-                       values=[rstring('slf33'), rstring('slf34')],
-                       default='slf33'),
+                       values=[rstring(f) for f in enabled_featuresets],
+                       default=enabled_featuresets[0]),
 
         scripts.Bool(
             'Select_Readout_Channel_instead_of_all',
