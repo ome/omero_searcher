@@ -317,6 +317,9 @@ def right_plugin_search_form (request, conn=None, **kwargs):
     images = []
 
     superIds = request.REQUEST.getlist('imagesuperid')
+    imageIds = request.REQUEST.getlist('image')
+    wellIds = request.REQUEST.getlist('well')
+
     if len(superIds) > 0:
         logger.debug('superIds: %s', superIds)
         for sid in superIds:
@@ -332,20 +335,39 @@ def right_plugin_search_form (request, conn=None, **kwargs):
                     })
 
     else:
-        imageIds = request.REQUEST.getlist('image')
-        logger.debug('imageIds: %s', imageIds)
-        for im in conn.getObjects("Image", imageIds):
-            c = 0
-            z = im.getSizeZ() / 2
-            t = im.getSizeT() / 2
-            images.append({
-                    'im': im,
-                    'id': im.id,
-                    'superid': '%d.0.%d.%d.%d' % (im.id, c, z, t),
-                    'defC': c,
-                    'defZ': z,
-                    'defT': t,
-                    })
+        if len(imageIds) > 0:
+            logger.debug('imageIds: %s', imageIds)
+            for im in conn.getObjects("Image", imageIds):
+                c = 0
+                z = im.getSizeZ() / 2
+                t = im.getSizeT() / 2
+                images.append({
+                        'im': im,
+                        'id': im.id,
+                        'superid': '%d.0.%d.%d.%d' % (im.id, c, z, t),
+                        'defC': c,
+                        'defZ': z,
+                        'defT': t,
+                        })
+
+        if len(wellIds) > 0:
+            logger.debug('wellIds: %s', wellIds)
+            wellImageIds = []
+            for well in conn.getObjects("Well", wellIds):
+                im = well.getImage()
+                c = 0
+                z = im.getSizeZ() / 2
+                t = im.getSizeT() / 2
+                wellImageIds.append(im.id)
+                images.append({
+                        'im': im,
+                        'id': im.id,
+                        'superid': '%d.0.%d.%d.%d' % (im.id, c, z, t),
+                        'defC': c,
+                        'defZ': z,
+                        'defT': t,
+                        })
+            logger.debug('wellImageIds: %s', wellImageIds)
 
     context['images'] = images
 
