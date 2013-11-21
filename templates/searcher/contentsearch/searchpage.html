@@ -255,6 +255,57 @@
         </div>
 
         <div class="search_refine_group">
+            <label>Filter by screen/plate:</label>
+            <a href="#" title="Show/Hide" class="search_refine_toggle"></a>
+            <div style="margin-left:20px">
+
+                {% for screen in screens %}
+                <div>
+                    <label>
+                        <input type="checkbox"
+                            class="search_refine_all" name="screen"
+                            value="{{screen.0}}" />
+                        {{screen.1}}
+                    </label>
+
+                    {% for plate in screen.2 %}
+                    <div style="margin-left:20px">
+                        <label>
+                            <input type="checkbox"
+                                {% if plate.2 %}checked="checked"{% endif %}
+                                class="search_refine_item" name="limit_plates"
+                                value="{{plate.0}}" />
+                            {{plate.1}}
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+
+                <div>
+                    <label>
+                        <input type="checkbox"
+                            class="search_refine_all" name="screen"
+                            value="[No screen]" />
+                        [No screen]
+                    </label>
+
+                    {% for plate in plates %}
+                    <div style="margin-left:20px">
+                        <label>
+                            <input type="checkbox"
+                                {% if plate.2 %}checked="checked"{% endif %}
+                                class="search_refine_item" name="limit_plates"
+                                value="{{plate.0}}" />
+                            {{plate.1}}
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="search_refine_group">
             <label>Filter by channel index:</label>
             <a href="#" title="Show/Hide" class="search_refine_toggle"></a>
             <div style="margin-left:20px">

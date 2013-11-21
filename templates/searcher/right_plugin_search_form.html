@@ -250,6 +250,58 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
         </div>
 
         <div class="search_filter_group">
+            <label>Filter by screen/plate:</label>
+            <a href="#" title="Show/Hide" class="search_filter_toggle"></a>
+            <div style="margin-left:20px">
+
+                {% for screen in screens %}
+                <div>
+                    <label>
+                        <input type="checkbox"
+                            class="search_filter_all" name="screen"
+                            value="{{screen.0}}" />
+                        {{proj.1}}
+                    </label>
+
+                    {% for plate in screen.2 %}
+                    <div style="margin-left:20px">
+                        <label>
+                            <input type="checkbox"
+                                {% if plate.2 %}checked="checked"{% endif %}
+                                class="search_filter_item" name="limit_plates"
+                                value="{{plate.0}}" />
+                            {{ plate.1 }}
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+
+                <div>
+                    <label>
+                        <input type="checkbox"
+                            class="search_filter_all" name="screen"
+                            value="[No screen]" />
+                        [No screen]
+                    </label>
+
+                    {% for plate in plates %}
+                    <div style="margin-left:20px">
+                        <label>
+                            <input type="checkbox"
+                                {% if plate.2 %}checked="checked"{% endif %}
+                                class="search_filter_item" name="limit_plates"
+                                value="{{plate.0}}" />
+                            {{ plate.1 }}
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+
+            </div>
+        </div>
+
+        <div class="search_filter_group">
             <label>Filter by channel index:</label>
             <a href="#" title="Show/Hide" class="search_filter_toggle"></a>
             <div style="margin-left:20px">
