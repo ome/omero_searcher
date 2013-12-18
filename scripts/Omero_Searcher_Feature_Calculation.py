@@ -14,7 +14,8 @@ pyslid.database.direct.set_contentdb_path(omero_contentdb_path)
 # 0 or 1 based indexing in the UI?
 IDX_OFFSET = 0
 
-supportedDataTypes = ['Project', 'Dataset', 'Image', 'Screen', 'Plate', 'Well']
+supportedDataTypes = ['Project', 'Dataset', 'Image',
+                      'Screen', 'Plate', 'PlateAcquisition', 'Well']
 
 
 def listExistingCZTS(conn, imageId, ftset):
