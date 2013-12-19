@@ -63,6 +63,13 @@
                     });
             });
 
+            $('input.search_refine_clear_all').click(function() {
+                $(this).parent().find('input.search_refine_all')
+                    .each(function() {
+                        this.checked = false;
+                    }).change();
+            });
+
 
             $(".search_refine_toggle").click(function(event){
                 event.preventDefault();
@@ -207,6 +214,8 @@
             <label>Filter by project/dataset:</label>
             <a href="#" title="Show/Hide" class="search_refine_toggle"></a>
             <div style="margin-left:20px">
+                <input type="button" class="search_refine_clear_all"
+                    value="Deselect all" />
 
                 {% for proj in projects %}
                 <div>
@@ -258,6 +267,8 @@
             <label>Filter by screen/plate:</label>
             <a href="#" title="Show/Hide" class="search_refine_toggle"></a>
             <div style="margin-left:20px">
+                <input type="button" class="search_refine_clear_all"
+                    value="Deselect all" />
 
                 {% for screen in screens %}
                 <div>

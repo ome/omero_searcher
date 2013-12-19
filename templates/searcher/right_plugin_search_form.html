@@ -85,6 +85,13 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
                 });
         });
 
+        $('input.search_filter_clear_all').click(function() {
+            $(this).parent().find('input.search_filter_all')
+                .each(function() {
+                    this.checked = false;
+                }).change();
+        });
+
 
         $(".search_filter_toggle").click(function(event){
             event.preventDefault();
@@ -201,6 +208,8 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
             <label>Filter by project/dataset:</label>
             <a href="#" title="Show/Hide" class="search_filter_toggle"></a>
             <div style="margin-left:20px">
+                <input type="button" class="search_filter_clear_all"
+                    value="Deselect all" />
 
                 {% for proj in projects %}
                 <div>
@@ -253,6 +262,8 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
             <label>Filter by screen/plate:</label>
             <a href="#" title="Show/Hide" class="search_filter_toggle"></a>
             <div style="margin-left:20px">
+                <input type="button" class="search_filter_clear_all"
+                    value="Deselect all" />
 
                 {% for screen in screens %}
                 <div>
