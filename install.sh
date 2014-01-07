@@ -128,8 +128,23 @@ if [ $? -ne 0 ]; then
     exit 2
 fi
 
-if [ -z "$CONFIG_KEY" ]; then
+CONFIG_RIGHT=`"$OMERO" config get omero.web.ui.right_plugins`
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to run $OMERO config"
+    exit 2
+fi
+
+if [ -z "$CONFIG_KEY" -o -z "$CONFIG_RIGHT" ]; then
     "$OMERO" config set omero.web.apps "[\"omero_searcher\"]"
+    if [ $? -ne 0 ]; then
+        echo "ERROR: Failed to run $OMERO config"
+        exit 2
+    fi
+
+    "$OMERO" config set omero.web.ui.right_plugins \
+        '[["Acquisition", "webclient/data/includes/right_plugin.acquisition.js.html", "metadata_tab"],
+    ["Preview", "webclient/data/includes/right_plugin.preview.js.html", "preview_tab"],
+    ["Searcher", "searcher/plugin_config/right_search_form.js.html", "right_search_form"]]'
     if [ $? -ne 0 ]; then
         echo "ERROR: Failed to run $OMERO config"
         exit 2
@@ -141,10 +156,12 @@ cat <<EOF
 
 ***** WARNING *****
 OMERO web-apps configuration failed.
-The omero.web.apps configuration key is non-empty. Please enable
-OMERO.searcher manually by running something like:
+The omero.web.apps or omero.web.ui.right_plugins configuration keys are
+non-empty. Please enable OMERO.searcher manually by running something like:
     omero config set omero.web.apps '[..., \"omero_searcher\"]'"
-
+    omero config set omero.ui.right_plugins \
+        "'[[...], ...
+        "[\"Searcher\", \"searcher/plugin_config/right_search_form.js.html\", \"right_search_form\"]]'"
 EOF
 fi
 
