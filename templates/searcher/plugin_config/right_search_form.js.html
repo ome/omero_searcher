@@ -1,3 +1,4 @@
+{% load url from future %}
 <script>
 
 $(document).ready(function() {
@@ -19,7 +20,7 @@ $(document).ready(function() {
                 }
             }
             queryString = imageIds.join("&");
-            $(this).load('{% url right_plugin_search_form %}?' + queryString);
+            $(this).load('{% url 'right_plugin_search_form' %}?' + queryString);
         },
         //supported_obj_types: ['image','dataset'],   // E.g. only support single image/dataset selected
         

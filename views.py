@@ -34,6 +34,10 @@ from omero_searcher_config import omero_contentdb_path
 pyslid.database.direct.set_contentdb_path(omero_contentdb_path)
 import ricerca
 
+# Forwards/backwards compatibility with django 1.4/1.5/1.6
+# http://trac.openmicroscopy.org.uk/ome/ticket/11800
+import django.template
+django.template.add_to_builtins('django.templatetags.future')
 
 # Note some of these views can be called from either the standard OMERO.web
 # pages or from an OMERO.searcher page, since it is possible to iteratively

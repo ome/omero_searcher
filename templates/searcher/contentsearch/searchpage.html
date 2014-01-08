@@ -1,4 +1,5 @@
 {% extends "webclient/search/search.html" %}
+{% load url from future %}
 {% load i18n %}
 
 {% block script %}
@@ -150,7 +151,8 @@
     <h1>{% trans "Search again with additional image(s)" %}</h1>
 
 
-    <form id="content_search" class="content_search" method="POST" action="{% url contentsearch %}">
+    <form id="content_search" class="content_search" method="POST"
+        action="{% url 'contentsearch' %}">
 
         <div>
             <label>Feature-set:
@@ -322,7 +324,7 @@
                 {% for c in images %}
                     <tr>
                         <td class="action">
-                            <img src="{% url render_thumbnail_resize 32 c.id  %}" alt="image" title="{{c.id}}"/>
+                            <img src="{% url 'render_thumbnail_resize' 32 c.id  %}" alt="image" title="{{c.id}}"/>
                             <input name="superIds" style="display:none" value="{{c.superid}}" type="text" />
 
                         </td>
@@ -346,7 +348,7 @@
     <hr style="clear:both"/>
 
     <form id="export_search" class="content_search" method="POST"
-        action="{% url exportsearch %}">
+        action="{% url 'exportsearch' %}">
         <label for="doExport">
             Export the most recent search results to a CSV file
         </label>
