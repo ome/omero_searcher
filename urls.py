@@ -10,7 +10,12 @@
 #
 import os.path
 
-from django.conf.urls import patterns, url
+import django
+if django.VERSION < (1, 6):
+    from django.conf.urls.defaults import *
+else:
+    from django.conf.urls import *
+
 from django.views.static import serve
 
 from . import views
