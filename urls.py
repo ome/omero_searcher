@@ -10,10 +10,10 @@
 #
 import os.path
 
-from django.conf.urls.defaults import *
+from django.conf.urls import patterns, url
 from django.views.static import serve
 
-from omeroweb.omero_searcher import views
+from . import views
 
 urlpatterns = patterns('django.views.generic.simple',
 
