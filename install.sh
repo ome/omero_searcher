@@ -3,64 +3,7 @@
 # Abort on error
 set -e
 
-cat <<EOF
-OMERO.searcher installation script
-==================================
-
-Installs OMERO.searcher, retains the previous configuration file if
-found.
-
-This script will attempt to install several Python dependencies. It
-is highly recommended that you first create and activate a Python
-virtualenv. This virtualenv must contain all the usual OMERO.server
-requirements.
-
-The Python mahotas module requires the freeimage library to be
-installed in advance. On CentOS this is available from the EPEL
-repository:
-    yum install freeimage
-On Mac OS X it can be installed using homebrew:
-    brew install freeimage
-
-Prerequisites include the PIL, numpy and scipy Python modules.
-Automatic installation of these modules sometimes fails, so it is
-normally easiest to install a distribution supplied version if
-available. For example on CentOS:
-    yum install python-imaging numpy scipy
-Alternatively install manually using pip:
-    pip install PIL
-    pip install numpy
-    pip install scipy
-
-OMERO.tables must be enabled and running on OMERO.server. It is
-normally automatically enabled if Pytables is installed, but if
-you see errors when running the OMERO.searcher feature calculation
-check that it is running.
-
-Configuration
--------------
-
-After installing OMERO.searcher you must create a directory for storing
-the features databases. Edit the settings in
-$OMERO_SERVER/lib/python/omeroweb/omero_searcher/omero_searcher_config.py
-and ensure the directory exists.
-
-In addition OMERO.web must be configured to use the OMERO.searcher web-app.
-For instance, run something along the lines of
-    omero config set omero.web.apps '[..., "omero_searcher"]'
-
-On OMERO 5 it is necessary to explicitly configure the right hand plugin
-pane:
-    omero config set omero.ui.right_plugins \\
-        '[[...], ...
-          ["Searcher", "searcher/plugin_config/right_search_form.js.html", "right_search_form"]]'
-
-See http://www.openmicroscopy.org/site/support/omero5/developers/Web/CreateApp.html#add-your-app-to-omero-web
-and http://www.openmicroscopy.org/site/support/omero5/developers/Web/WebclientPlugin.html#plugin-installation
-for further details
----------------------------------------------------------------------------
-
-EOF
+echo "OMERO.searcher installation script"
 
 usage() {
     echo "USAGE: `basename $0` OMERO_PREFIX [--nodeps] [--noconf] [--omero5]"
@@ -234,8 +177,7 @@ cat <<EOF
 ***** WARNING *****
 OMERO web-apps configuration failed.
 The omero.web.apps or omero.web.ui.right_plugins configuration keys are
-non-empty. Please enable OMERO.searcher manually, for help run
-    $0 -h
+non-empty. See INSTALL.md for help.
 EOF
     fi
 fi
