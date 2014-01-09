@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Abort on error
 set -e
@@ -37,13 +37,37 @@ normally automatically enabled if Pytables is installed, but if
 you see errors when running the OMERO.searcher feature calculation
 check that it is running.
 
+Configuration
+-------------
+
+After installing OMERO.searcher you must create a directory for storing
+the features databases. Edit the settings in
+$OMERO_SERVER/lib/python/omeroweb/omero_searcher/omero_searcher_config.py
+and ensure the directory exists.
+
+In addition OMERO.web must be configured to use the OMERO.searcher web-app.
+For instance, run something along the lines of
+    omero config set omero.web.apps '[..., "omero_searcher"]'
+
+On OMERO 5 it is necessary to explicitly configure the right hand plugin
+pane:
+    omero config set omero.ui.right_plugins \\
+        '[[...], ...
+          ["Searcher", "searcher/plugin_config/right_search_form.js.html", "right_search_form"]]'
+
+See http://www.openmicroscopy.org/site/support/omero5/developers/Web/CreateApp.html#add-your-app-to-omero-web
+and http://www.openmicroscopy.org/site/support/omero5/developers/Web/WebclientPlugin.html#plugin-installation
+for further details
+---------------------------------------------------------------------------
 
 EOF
 
 usage() {
-    echo "USAGE: `basename $0` OMERO_PREFIX [--nodeps]"
+    echo "USAGE: `basename $0` OMERO_PREFIX [--nodeps] [--noconf] [--omero5]"
     echo "  OMERO_PREFIX: The root directory of the OMERO server installation"
     echo "  --nodeps: Don't install requirements"
+    echo "  --noconf: Don't attempt to automatically configure any OMERO.web app settings"
+    echo "  --omero5: Attempt to automatically configure OMERO.searcher for OMERO5"
     exit $1
 }
 
@@ -59,26 +83,52 @@ check_py_mod() {
     set -e
 }
 
-if [ $# -eq 0 -o "$1" = "-h" ]; then
-    usage 0
-fi
-
 NODEPS=0
-if [ $# -ne 1 ]; then
-    if [ $# -gt 2 -o "$2" != "--nodeps" ]; then
-        echo "Unexpected arguments"
-        usage 2
-    fi
-    NODEPS=1
+NOCONF=0
+OMERO_VERSION=4
+OMERO_SERVER=
+
+while [ $# -gt 0 ]; do
+    arg="$1"
+    shift
+
+    case "$arg" in
+        "-h")
+            usage 0
+            ;;
+
+        "--nodeps")
+            NODEPS=1
+            ;;
+
+        "--noconf")
+            NOCONF=1
+            ;;
+
+        "--omero5")
+            OMERO_VERSION=5
+            ;;
+
+        *)
+            if [ -n "$OMERO_SERVER" ]; then
+                echo "Unexpected arguments"
+                usage 1
+            fi
+            OMERO_SERVER="$arg"
+            ;;
+    esac
+done
+
+if [ -z "$OMERO_SERVER" ]; then
+    usage 1
 fi
 
-if [ ! -d "$1" ]; then
-    echo "Invalid server directory: $1"
+if [ ! -d "$OMERO_SERVER" ]; then
+    echo "Invalid server directory: $OMERO_SERVER"
     usage 2
 fi
 
 
-OMERO_SERVER="$1"
 SCRIPT_DEST="$OMERO_SERVER/lib/scripts/searcher"
 WEB_DEST="$OMERO_SERVER/lib/python/omeroweb/omero_searcher"
 CONFIG="$WEB_DEST/omero_searcher_config.py"
@@ -106,9 +156,13 @@ if [ -e "$CONFIG" ]; then
 fi
 
 if [ -e "$SCRIPT_DEST" -o -e "$WEB_DEST" ]; then
-    echo
-    echo "***** WARNING *****"
-    echo "Deleting $SCRIPT_DEST and/or $WEB_DEST in 5s, hit Ctrl-C to abort"
+cat <<EOF
+
+***** WARNING *****
+Deleting $SCRIPT_DEST
+and $WEB_DEST
+in 5s, hit Ctrl-C to abort
+EOF
     sleep 5
     rm -rf "$SCRIPT_DEST" "$WEB_DEST"
 fi
@@ -126,35 +180,64 @@ if [ -n "$OLD_CONFIG" ]; then
     mv "$OLD_CONFIG" "$CONFIG"
 fi
 
-echo "Configuring OMERO web-apps"
-OMERO="$OMERO_SERVER/bin/omero"
+if [ $NOCONF -eq 1 ]; then
+    echo "Skipping OMERO.searcher web configuration"
+else
+    echo "Configuring OMERO web-apps"
+    OMERO="$OMERO_SERVER/bin/omero"
 
-# Disable exit on failure so that we can print out a more informative message
-set +e
-CONFIG_KEY=`"$OMERO" config get omero.web.apps`
-if [ $? -ne 0 ]; then
-    echo "ERROR: Failed to run $OMERO config"
-    exit 2
-fi
-
-if [ -z "$CONFIG_KEY" ]; then
-    "$OMERO" config set omero.web.apps "[\"omero_searcher\"]"
+    # Disable exit on failure so that we can print out a more informative
+    # message
+    set +e
+    CONFIG_KEY=`"$OMERO" config get omero.web.apps`
     if [ $? -ne 0 ]; then
         echo "ERROR: Failed to run $OMERO config"
         exit 2
     fi
-else
-    # TODO: Automatically append omero_searcher to the omero.web.apps config key
-    # (requires parsing the existing value of omero.web.apps if any)
+
+    CONFIG_RIGHT=`"$OMERO" config get omero.web.ui.right_plugins`
+    if [ $? -ne 0 ]; then
+        echo "ERROR: Failed to run $OMERO config"
+        exit 2
+    fi
+
+    if [ $OMERO_VERSION -eq 4 -a -z "$CONFIG_KEY" ]; then
+        "$OMERO" config set omero.web.apps '["omero_searcher"]'
+        if [ $? -ne 0 ]; then
+            echo "ERROR: Failed to run $OMERO config"
+            exit 2
+        fi
+
+    elif [ $OMERO_VERSION -eq 5 -a -z "$CONFIG_KEY" -a -z "$CONFIG_RIGHT" ];
+    then
+        "$OMERO" config set omero.web.apps '["omero_searcher"]'
+        if [ $? -ne 0 ]; then
+            echo "ERROR: Failed to run $OMERO config"
+            exit 2
+        fi
+
+        TABacquisition='["Acquisition", "webclient/data/includes/right_plugin.acquisition.js.html", "metadata_tab"]'
+        TABpreview='["Preview", "webclient/data/includes/right_plugin.preview.js.html", "preview_tab"]'
+        TABsearcher='["Searcher", "searcher/plugin_config/right_search_form.js.html", "right_search_form"]'
+        "$OMERO" config set omero.web.ui.right_plugins \
+            "[$TABacquisition, $TABpreview, $TABsearcher]"
+        if [ $? -ne 0 ]; then
+            echo "ERROR: Failed to run $OMERO config"
+            exit 2
+        fi
+    else
+        # TODO: Automatically append omero_searcher to the omero.web.apps
+        # config key (requires parsing the existing value of omero.web.apps
+        # if any)
 cat <<EOF
 
 ***** WARNING *****
 OMERO web-apps configuration failed.
-The omero.web.apps configuration key is non-empty. Please enable
-OMERO.searcher manually by running something like:
-    omero config set omero.web.apps '[..., \"omero_searcher\"]'"
-
+The omero.web.apps or omero.web.ui.right_plugins configuration keys are
+non-empty. Please enable OMERO.searcher manually, for help run
+    $0 -h
 EOF
+    fi
 fi
 
 if [ -z "$OLD_CONFIG" ]; then
