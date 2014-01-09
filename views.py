@@ -855,6 +855,9 @@ def exportsearch(request, conn=None, **kwargs):
         parents = img_map[im['id']].listParents()
         if parents:
             p = parents[0]
+            if p.OMERO_CLASS == 'WellSample':
+                # WellSample > Well > Plate
+                p = p.getParent().getParent()
             im['parentid'] = p.id
             im['parenttype'] = p.OMERO_CLASS
             im['parentname'] = p.name
