@@ -6,7 +6,7 @@ set -e
 echo "OMERO.searcher installation script"
 
 usage() {
-    echo "USAGE: `basename $0` OMERO_PREFIX [--nodeps] [--noconf] [--omero5]"
+    echo "USAGE: $(basename $0) OMERO_PREFIX [--nodeps] [--noconf] [--omero5]"
     echo "  OMERO_PREFIX: The root directory of the OMERO server installation"
     echo "  --nodeps: Don't install requirements"
     echo "  --noconf: Don't attempt to automatically configure any OMERO.web app settings"
@@ -15,15 +15,12 @@ usage() {
 }
 
 check_py_mod() {
-    set +e
-    python -c "import $1"
-    if [ $? -ne 0 ]; then
+    python -c "import $1" || {
         echo "$2"
         if [ $3 -gt 0 ]; then
             exit $3
         fi
-    fi
-    set -e
+    }
 }
 
 NODEPS=0
@@ -94,7 +91,7 @@ fi
 
 if [ -e "$CONFIG" ]; then
     echo "Saving old configuration"
-    OLD_CONFIG=`mktemp -t omero_searcher_config.XXXXXX`
+    OLD_CONFIG=$(mktemp -t omero_searcher_config.XXXXXX)
     cat "$CONFIG" >> "$OLD_CONFIG"
 fi
 
@@ -129,45 +126,37 @@ else
     echo "Configuring OMERO web-apps"
     OMERO="$OMERO_SERVER/bin/omero"
 
-    # Disable exit on failure so that we can print out a more informative
-    # message
-    set +e
-    CONFIG_KEY=`"$OMERO" config get omero.web.apps`
-    if [ $? -ne 0 ]; then
+    CONFIG_KEY=$("$OMERO" config get omero.web.apps) || {
         echo "ERROR: Failed to run $OMERO config"
         exit 2
-    fi
+    }
 
-    CONFIG_RIGHT=`"$OMERO" config get omero.web.ui.right_plugins`
-    if [ $? -ne 0 ]; then
+    CONFIG_RIGHT=$("$OMERO" config get omero.web.ui.right_plugins) || {
         echo "ERROR: Failed to run $OMERO config"
         exit 2
-    fi
+    }
 
     if [ $OMERO_VERSION -eq 4 -a -z "$CONFIG_KEY" ]; then
-        "$OMERO" config set omero.web.apps '["omero_searcher"]'
-        if [ $? -ne 0 ]; then
+        "$OMERO" config set omero.web.apps '["omero_searcher"]' || {
             echo "ERROR: Failed to run $OMERO config"
             exit 2
-        fi
+        }
 
     elif [ $OMERO_VERSION -eq 5 -a -z "$CONFIG_KEY" -a -z "$CONFIG_RIGHT" ];
     then
-        "$OMERO" config set omero.web.apps '["omero_searcher"]'
-        if [ $? -ne 0 ]; then
+        "$OMERO" config set omero.web.apps '["omero_searcher"]' || {
             echo "ERROR: Failed to run $OMERO config"
             exit 2
-        fi
+        }
 
         TABacquisition='["Acquisition", "webclient/data/includes/right_plugin.acquisition.js.html", "metadata_tab"]'
         TABpreview='["Preview", "webclient/data/includes/right_plugin.preview.js.html", "preview_tab"]'
         TABsearcher='["Searcher", "searcher/plugin_config/right_search_form.js.html", "right_search_form"]'
         "$OMERO" config set omero.web.ui.right_plugins \
-            "[$TABacquisition, $TABpreview, $TABsearcher]"
-        if [ $? -ne 0 ]; then
+            "[$TABacquisition, $TABpreview, $TABsearcher]" || {
             echo "ERROR: Failed to run $OMERO config"
             exit 2
-        fi
+        }
     else
         # TODO: Automatically append omero_searcher to the omero.web.apps
         # config key (requires parsing the existing value of omero.web.apps
