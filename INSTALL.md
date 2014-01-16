@@ -19,6 +19,10 @@ is available from the EPEL repository:
 
     yum install freeimage
 
+On Debian it is available in the standard repositories:
+
+    apt-get install libfreeimage3
+
 On Mac OS X it can be installed using homebrew:
 
     brew install freeimage
@@ -30,6 +34,10 @@ For example, on CentOS:
 
     yum install python-imaging numpy scipy
 
+On Debian:
+
+    apt-get install python-imaging python-numpy python-scipy
+
 Alternatively install manually using pip:
 
     pip install PIL
@@ -38,7 +46,8 @@ Alternatively install manually using pip:
 
 Note OMERO.searcher requires OMERO.tables to be running. Although
 OMERO.tables is included in OMERO.server it is automatically disabled if
-Pytables is missing.
+Pytables is missing. See
+http://www.openmicroscopy.org/site/support/omero5/sysadmins/unix/server-installation.html
 
 
 Installation script
