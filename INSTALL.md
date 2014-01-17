@@ -57,13 +57,9 @@ The installation script will install OMERO.searcher, retaining the previous
 configuration file if found. It will attempt to install several Python
 dependencies. See below for manual installation instructions.
 
-To install OMERO.searcher to a 4.4 server:
+To install OMERO.searcher:
 
     ./install.sh /path/to/OMERO_SERVER
-
-For a 5.0 server:
-
-    ./install.sh /path/to/OMERO_SERVER --omero5
 
 Run
 
@@ -72,7 +68,7 @@ Run
 for help on additional arguments.
 
 If you have previously installed a web application the OMERO.web
-configuration step will fail, see Configuration above for details how to
+configuration step will fail, see Configuration below for details on how to
 manually enable OMERO.searcher in OMERO.web.
 
 
@@ -98,7 +94,9 @@ Configuration
 
 After installing OMERO.searcher you must create a directory for storing
 the feature databases. Edit the settings in
-$OMERO_SERVER/lib/python/omeroweb/omero_searcher/omero_searcher_config.py
+
+    $OMERO_SERVER/lib/python/omeroweb/omero_searcher/omero_searcher_config.py
+
 and ensure the directory exists.
 
 In addition OMERO.web must be configured to use the OMERO.searcher web-app.
@@ -108,8 +106,7 @@ along the lines of
 
     omero config set omero.web.apps '[..., "omero_searcher"]'
 
-On OMERO 5 it is necessary to explicitly configure the right hand plugin
-pane
+You will also need to explicitly configure the right hand plugin pane:
 
     omero config set omero.ui.right_plugins \
         '[[...], ["Searcher", "searcher/plugin_config/right_search_form.js.html", "right_search_form"]]'
