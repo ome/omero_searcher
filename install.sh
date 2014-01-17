@@ -6,11 +6,10 @@ set -e
 echo "OMERO.searcher installation script"
 
 usage() {
-    echo "USAGE: $(basename $0) OMERO_PREFIX [--nodeps] [--noconf] [--omero5]"
+    echo "USAGE: $(basename $0) OMERO_PREFIX [--nodeps] [--noconf]"
     echo "  OMERO_PREFIX: The root directory of the OMERO server installation"
     echo "  --nodeps: Don't install requirements"
     echo "  --noconf: Don't attempt to automatically configure any OMERO.web app settings"
-    echo "  --omero5: Attempt to automatically configure OMERO.searcher for OMERO5"
     exit $1
 }
 
@@ -25,7 +24,6 @@ check_py_mod() {
 
 NODEPS=0
 NOCONF=0
-OMERO_VERSION=4
 OMERO_SERVER=
 
 while [ $# -gt 0 ]; do
@@ -43,10 +41,6 @@ while [ $# -gt 0 ]; do
 
         "--noconf")
             NOCONF=1
-            ;;
-
-        "--omero5")
-            OMERO_VERSION=5
             ;;
 
         *)
@@ -136,13 +130,7 @@ else
         exit 2
     }
 
-    if [ $OMERO_VERSION -eq 4 -a -z "$CONFIG_KEY" ]; then
-        "$OMERO" config set omero.web.apps '["omero_searcher"]' || {
-            echo "ERROR: Failed to run $OMERO config"
-            exit 2
-        }
-
-    elif [ $OMERO_VERSION -eq 5 -a -z "$CONFIG_KEY" -a -z "$CONFIG_RIGHT" ];
+    if [ -z "$CONFIG_KEY" -a -z "$CONFIG_RIGHT" ];
     then
         "$OMERO" config set omero.web.apps '["omero_searcher"]' || {
             echo "ERROR: Failed to run $OMERO config"
@@ -164,9 +152,9 @@ else
 cat <<EOF
 
 ***** WARNING *****
-OMERO web-apps configuration failed.
+OMERO web-apps auto-configuration failed.
 The omero.web.apps or omero.web.ui.right_plugins configuration keys are
-non-empty. See INSTALL.md for help.
+non-empty. See INSTALL.md for help on manual configuration.
 EOF
     fi
 fi
