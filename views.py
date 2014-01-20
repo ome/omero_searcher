@@ -805,7 +805,7 @@ def exportcontentdb(request, conn=None, **kwargs):
 
     logger.debug('Exporting contentdb: %s', dbname)
 
-    response = HttpResponse(content_type='application/octet-stream')
+    response = HttpResponse(content_type='application/python-pickle')
     response['Content-Disposition'] = 'attachment; filename="%s"' % dbname
     pickle.dump(cdb, response)
     return response
