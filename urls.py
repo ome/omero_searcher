@@ -27,6 +27,7 @@ urlpatterns = patterns('django.views.generic.simple',
 
     url( r'^contentsearch/$', views.contentsearch, name="contentsearch"), 
     url( r'^exportsearch/$', views.exportsearch, name="exportsearch"),
+    url( r'^exportcontentdb/$', views.exportcontentdb, name="exportcontentdb"),
     url( r'^featureCalculationConfig/(?:(?P<object_type>[a-zA-Z0-9]+))/(?:(?P<object_ID>[0-9]+)/)?$', views.featureCalculationConfig, name="featureCalculationConfig"),  ## BK 
     url( r'^featureCalculation/(?:(?P<object_type>[a-zA-Z0-9]+))/(?:(?P<object_ID>[0-9]+))/(?:(?P<featureset>[a-zA-Z0-9]+))/(?:(?P<contentDB_config>[a-zA-Z0-9\-\,\.]+)/)?$', views.featureCalculation, name="featureCalculation"),  ## BK
 ##    url( r'^getSearchContentDBfromRemoteServer/?$', views.getSearchContentDBfromRemoteServer, name="getSearchContentDBfromRemoteServer"),  ## BK                       
