@@ -1,3 +1,4 @@
+{% load url from future %}
 
 {% load i18n %}
 {% load common_filters %}
@@ -151,7 +152,7 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
 
     <h1>Image Content Search</h1>
 
-    <form class="content_search" method="POST" action="{% url searchpage %}">
+    <form class="content_search" method="POST" action="{% url 'searchpage' %}">
         <div>
             <label>Featureset Name:
                 <select id="featureset" name="featureset_Name">
@@ -380,7 +381,8 @@ Authors: Baek Hwan Cho and Robert F. Murphy @CMU
                 {% for c in images %}
                     <tr>
                         <td class="action">
-                            <img src="{% url render_thumbnail_resize 32 c.id  %}" alt="image" title="{{c.id}}"/>
+                            <img src="{% url 'render_thumbnail_resize' 32 c.id  %}"
+                                alt="image" title="{{c.id}}"/>
                             <input name="allIds" style="display:none" value="{{c.superid}}" type="text" />
 
                         </td>
