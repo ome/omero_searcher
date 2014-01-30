@@ -19,6 +19,9 @@ from operator import itemgetter
 from django.http import HttpResponse
 from django.template import loader, Context
 
+# For ContentDB export
+import pickle
+
 from omeroweb.webclient.decorators import login_required, render_response
 from webclient.webclient_gateway import OmeroWebGateway
 
@@ -872,6 +875,34 @@ def exportsearch(request, conn=None, **kwargs):
 
     logger.debug('Exporting search results: %s', images)
     response.write(t.render(c))
+    return response
+
+
+@login_required(setGroupContext=True)
+@render_response()
+def exportcontentdb(request, conn=None, **kwargs):
+    logger.debug('exportcontentdb POST:%s', request.POST)
+    ftset = request.POST.get('featureset_Name')
+
+    # Two separate calls, one to get the filename and one to get the contents
+    # TODO: Maybe modify pyslid to return a file handle instead of re-pickling
+    dbname, dbname_next, result = pyslid.database.direct.getRecentName(
+        conn, ftset)
+    cdb, s = pyslid.database.direct.retrieve(conn, ftset)
+
+    if s != 'Good':
+        context = {'template':
+                       'searcher/contentsearch/search_error.html'}
+        context['message'] = (
+            'The Content DB for feature-set %s could not be found. '
+            'Have you calculated any features?') % ftset
+        return context
+
+    logger.debug('Exporting contentdb: %s', dbname)
+
+    response = HttpResponse(content_type='application/python-pickle')
+    response['Content-Disposition'] = 'attachment; filename="%s"' % dbname
+    pickle.dump(cdb, response)
     return response
 
 

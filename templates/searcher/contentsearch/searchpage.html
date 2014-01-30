@@ -418,6 +418,13 @@
             value="Export results" />
     </form>
 
+    <form id="export_contentdb" class="content_search" method="POST"
+        action="{% url 'exportcontentdb' %}">
+        <input name="featureset_Name" value="{{ fset }}" type="hidden" />
+        <input style="float:right" id="doExportCdb" type="submit"
+            value="Download content DB" />
+    </form>
+
     </div>
 
 </div>
