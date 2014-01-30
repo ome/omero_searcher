@@ -12,7 +12,7 @@
 import logging
 from collections import defaultdict
 from datetime import datetime
-from itertools import izip
+from itertools import izip, chain
 from operator import itemgetter
 
 # These two are needed for the CSV export
@@ -139,6 +139,29 @@ def getProjectsDatasets(conn, limit_datasets=None):
     return (projects, orphanDatasets)
 
 
+def getScreensPlates(conn, limit_plates=None):
+    """
+    Get a list of (plate-id, screnn/platedataset name, enabled?)
+    """
+
+    screens = dict((s.id, (s.name, []))
+                   for s in conn.getObjects('Screen', None))
+    orphanPlates = []
+    for p in conn.getObjects('Plate', None):
+        enabled = noneOrInList(limit_plates, p.id)
+        if p.getParent():
+            screens[p.getParent().id][1].append((p.id, p.name, enabled))
+        else:
+            orphanPlates.append((p.id, p.name, enabled))
+
+    # First sort screens by name, then sort plates by name
+    screens = sorted(screens.iteritems(), key=lambda s: s[1][0])
+    screens = [(s[0], s[1][0],
+                 sorted(s[1][1], key=itemgetter(1))) for s in screens]
+    orphanPlates = sorted(orphanPlates, key=itemgetter(1))
+    return (screens, orphanPlates)
+
+
 def getImageDatasetMap(conn):
     """
     It should be quicker to build a one-off mapping of images to datasets
@@ -254,6 +277,9 @@ def filterByDataset(conn, iids, dids):
     Check whether the supplied image ids are contained in one of the specified
     datasets, given as IDs
     """
+    if len(dids) == 0 or len(iids) == 0:
+        return set()
+
     qs = conn.getQueryService()
     query = ('select dl from DatasetImageLink dl '
              'where dl.parent.id in (:dids) '
@@ -264,9 +290,31 @@ def filterByDataset(conn, iids, dids):
     params.add('iids', wrap([long(u) for u in iids]))
 
     dls = qs.findAllByQuery(query, params, conn.SERVICE_OPTS)
-    filteredIids = [dl.child.id.val for dl in dls]
+    filteredIids = set(dl.child.id.val for dl in dls)
     return filteredIids
 
+
+def filterByPlate(conn, iids, pids):
+    """
+    Check whether the supplied image ids are contained in one of the specified
+    plates, given as IDs
+    """
+    if len(pids) == 0 or len(iids) == 0:
+        return set()
+
+    qs = conn.getQueryService()
+    query = ('select ws.image.id from WellSample ws '
+             'where ws.well.plate.id in (:pids) '
+             'and ws.image.id in (:iids) ')
+
+    params = omero.sys.ParametersI()
+    params.add('pids', wrap([long(u) for u in pids]))
+    params.add('iids', wrap([long(u) for u in iids]))
+
+    filteredIids = qs.projection(query, params, conn.SERVICE_OPTS)
+    filteredIids = set(chain(*unwrap(filteredIids)))
+    return filteredIids
+ 
 
 def listAvailableCZTS(conn, imageId, ftset):
     """
@@ -317,6 +365,9 @@ def right_plugin_search_form (request, conn=None, **kwargs):
     images = []
 
     superIds = request.REQUEST.getlist('imagesuperid')
+    imageIds = request.REQUEST.getlist('image')
+    wellIds = request.REQUEST.getlist('well')
+
     if len(superIds) > 0:
         logger.debug('superIds: %s', superIds)
         for sid in superIds:
@@ -332,20 +383,39 @@ def right_plugin_search_form (request, conn=None, **kwargs):
                     })
 
     else:
-        imageIds = request.REQUEST.getlist('image')
-        logger.debug('imageIds: %s', imageIds)
-        for im in conn.getObjects("Image", imageIds):
-            c = 0
-            z = im.getSizeZ() / 2
-            t = im.getSizeT() / 2
-            images.append({
-                    'im': im,
-                    'id': im.id,
-                    'superid': '%d.0.%d.%d.%d' % (im.id, c, z, t),
-                    'defC': c,
-                    'defZ': z,
-                    'defT': t,
-                    })
+        if len(imageIds) > 0:
+            logger.debug('imageIds: %s', imageIds)
+            for im in conn.getObjects("Image", imageIds):
+                c = 0
+                z = im.getSizeZ() / 2
+                t = im.getSizeT() / 2
+                images.append({
+                        'im': im,
+                        'id': im.id,
+                        'superid': '%d.0.%d.%d.%d' % (im.id, c, z, t),
+                        'defC': c,
+                        'defZ': z,
+                        'defT': t,
+                        })
+
+        if len(wellIds) > 0:
+            logger.debug('wellIds: %s', wellIds)
+            wellImageIds = []
+            for well in conn.getObjects("Well", wellIds):
+                im = well.getImage()
+                c = 0
+                z = im.getSizeZ() / 2
+                t = im.getSizeT() / 2
+                wellImageIds.append(im.id)
+                images.append({
+                        'im': im,
+                        'id': im.id,
+                        'superid': '%d.0.%d.%d.%d' % (im.id, c, z, t),
+                        'defC': c,
+                        'defZ': z,
+                        'defT': t,
+                        })
+            logger.debug('wellImageIds: %s', wellImageIds)
 
     context['images'] = images
 
@@ -355,6 +425,10 @@ def right_plugin_search_form (request, conn=None, **kwargs):
     projects, orphanDatasets = getProjectsDatasets(conn)
     context['projects'] = projects
     context['datasets'] = orphanDatasets
+
+    screens, orphanPlates = getScreensPlates(conn)
+    context['screens'] = screens
+    context['plates'] = orphanPlates
 
     context['channelidxs'] = getChannelIndices(conn)
     context['channelnames'] = getChannelNames(conn)
@@ -395,6 +469,10 @@ def searchpage( request, iIds=None, dId = None, fset = None, numret = None, negI
     limit_datasets = [int(x) for x in limit_datasets]
     context['limit_datasets'] = limit_datasets
 
+    limit_plates = request.POST.getlist("limit_plates")
+    limit_plates = [int(x) for x in limit_plates]
+    context['limit_plates'] = limit_plates
+
     limit_channelidxs = request.POST.getlist("limit_channelidxs")
     limit_channelidxs = [int(x) for x in limit_channelidxs]
     context['limit_channelidxs'] = limit_channelidxs
@@ -409,6 +487,10 @@ def searchpage( request, iIds=None, dId = None, fset = None, numret = None, negI
     projects, orphanDatasets = getProjectsDatasets(conn, limit_datasets)
     context['projects'] = projects
     context['datasets'] = orphanDatasets
+
+    screens, orphanPlates = getScreensPlates(conn, limit_plates)
+    context['screens'] = screens
+    context['plates'] = orphanPlates
 
     context['channelidxs'] = getChannelIndices(conn, limit_channelidxs)
     context['channelnames'] = getChannelNames(conn, limit_channelnames)
@@ -476,19 +558,25 @@ def contentsearch( request, conn=None, **kwargs):
             }
         return context
 
+
     limit_users = set(int(x) for x in limit_users)
     logger.debug('Got limit_users: %s', limit_users)
 
     limit_datasets = request.POST.getlist("limit_datasets")
-    if enable_filters and len(limit_datasets) == 0:
+    limit_plates = request.POST.getlist("limit_plates")
+
+    if enable_filters and len(limit_datasets) == 0 and len(limit_plates) == 0:
         context = {
             'template': 'searcher/contentsearch/search_error.html',
-            'message': 'No datasets selected'
+            'message': 'No datasets or plates selected'
             }
         return context
 
     limit_datasets = set(int(x) for x in limit_datasets)
     logger.debug('Got limit_datasets: %s', limit_datasets)
+    limit_plates = set(int(x) for x in limit_plates)
+    logger.debug('Got limit_plates: %s', limit_plates)
+
 
     limit_channelidxs = request.POST.getlist("limit_channelidxs")
     if enable_filters and len(limit_channelidxs) == 0:
@@ -656,8 +744,12 @@ def contentsearch( request, conn=None, **kwargs):
                               for sid in im_ids_sorted[i:i + batch_size])
 
             if enable_filters:
-                filter1ids = filterByDataset(
-                    conn, batch_sids.values(), limit_datasets)
+                filter1ids = set.union(
+                    filterByDataset(
+                        conn, batch_sids.values(), limit_datasets),
+                    filterByPlate(
+                        conn, batch_sids.values(), limit_plates)
+                    )
 
                 imChMap = filterImageUserChannels(
                     conn, filter1ids, uids=limit_users,
@@ -763,6 +855,9 @@ def exportsearch(request, conn=None, **kwargs):
         parents = img_map[im['id']].listParents()
         if parents:
             p = parents[0]
+            if p.OMERO_CLASS == 'WellSample':
+                # WellSample > Well > Plate
+                p = p.getParent().getParent()
             im['parentid'] = p.id
             im['parenttype'] = p.OMERO_CLASS
             im['parentname'] = p.name

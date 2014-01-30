@@ -14,6 +14,8 @@ pyslid.database.direct.set_contentdb_path(omero_contentdb_path)
 # 0 or 1 based indexing in the UI?
 IDX_OFFSET = 0
 
+supportedDataTypes = ['Project', 'Dataset', 'Image',
+                      'Screen', 'Plate', 'PlateAcquisition', 'Well']
 
 
 def listExistingCZTS(conn, imageId, ftset):
@@ -173,6 +175,25 @@ def extractFeatures(conn, image, scale, ftset, scaleSet,
     return message
 
 
+def imageGenerator(parent):
+    """
+    Returns a sequence of images from one or more containers
+    """
+    if isinstance(parent, list):
+        for par in parent:
+            for im in imageGenerator(par):
+                yield im
+    elif parent.OMERO_CLASS == 'Image':
+        yield parent
+    elif parent.OMERO_CLASS == 'WellSample':
+        yield parent.getImage()
+    else:
+        print '%s: %d' % (parent.OMERO_CLASS, parent.id)
+        for ch in parent.listChildren():
+            for im in imageGenerator(ch):
+                yield im
+
+
 def processImages(client, scriptParams):
     message = ''
 
@@ -213,32 +234,21 @@ def processImages(client, scriptParams):
             message += logMessage
             return message
 
-        # TODO: Consider wrapping each image calculation with a trry-catch
+        # TODO: Consider wrapping each image calculation with a try-catch
         # so that we can attempt to continue on error?
 
-        if dataType == 'Image':
-            for image in objects:
-                print 'Processing image id:%d' % image.getId()
-                msg = extractFeatures(
-                    conn, image, scale, ftset, scaleSet,
-                    channels, zselect, tselect, recalc, disableCdb)
-                message += msg + '\n'
+        if dataType not in supportedDataTypes:
+            m = 'Invalid datatype: %s\n' % datatype
+            sys.stderr.write(m)
+            return message + m
 
-        else:
-            if dataType == 'Project':
-                datasets = [proj.listChildren() for proj in objects]
-                datasets = itertools.chain.from_iterable(datasets)
-            else:
-                datasets = objects
-
-            for d in datasets:
-                print 'Processing dataset id:%d' % d.getId()
-                for image in d.listChildren():
-                    print 'Processing image id:%d' % image.getId()
-                    msg = extractFeatures(
-                        conn, image, scale, ftset, scaleSet,
-                        channels, zselect, tselect, recalc, disableCdb)
-                    message += msg + '\n'
+        images = imageGenerator(objects)
+        for image in images:
+            print 'Processing image id:%d' % image.getId()
+            msg = extractFeatures(
+                conn, image, scale, ftset, scaleSet,
+                channels, zselect, tselect, recalc, disableCdb)
+            message += msg + '\n'
 
         # Finally tidy up by removing duplicates
         for s in scaleSet:
@@ -270,12 +280,12 @@ def runScript():
 
         scripts.String('Data_Type', optional=False, grouping='1',
                        description='The data you want to work with.',
-                       values=[rstring('Project'), rstring('Dataset'), rstring('Image')],
+                       values=[rstring(dt) for dt in supportedDataTypes],
                        default='Dataset'),
 
         scripts.List(
             'IDs', optional=False, grouping='1',
-            description='List of Dataset, Project or Image IDs').ofType(rlong(0)),
+            description='List of container or Image IDs').ofType(rlong(0)),
 
 
         scripts.String('Feature_set', optional=False, grouping='2',

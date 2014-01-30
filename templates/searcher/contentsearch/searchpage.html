@@ -63,6 +63,13 @@
                     });
             });
 
+            $('input.search_refine_clear_all').click(function() {
+                $(this).parent().find('input.search_refine_all')
+                    .each(function() {
+                        this.checked = false;
+                    }).change();
+            });
+
 
             $(".search_refine_toggle").click(function(event){
                 event.preventDefault();
@@ -207,6 +214,8 @@
             <label>Filter by project/dataset:</label>
             <a href="#" title="Show/Hide" class="search_refine_toggle"></a>
             <div style="margin-left:20px">
+                <input type="button" class="search_refine_clear_all"
+                    value="Deselect all" />
 
                 {% for proj in projects %}
                 <div>
@@ -247,6 +256,59 @@
                                 class="search_refine_item" name="limit_datasets"
                                 value="{{dset.0}}" />
                             {{dset.1}}
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="search_refine_group">
+            <label>Filter by screen/plate:</label>
+            <a href="#" title="Show/Hide" class="search_refine_toggle"></a>
+            <div style="margin-left:20px">
+                <input type="button" class="search_refine_clear_all"
+                    value="Deselect all" />
+
+                {% for screen in screens %}
+                <div>
+                    <label>
+                        <input type="checkbox"
+                            class="search_refine_all" name="screen"
+                            value="{{screen.0}}" />
+                        {{screen.1}}
+                    </label>
+
+                    {% for plate in screen.2 %}
+                    <div style="margin-left:20px">
+                        <label>
+                            <input type="checkbox"
+                                {% if plate.2 %}checked="checked"{% endif %}
+                                class="search_refine_item" name="limit_plates"
+                                value="{{plate.0}}" />
+                            {{plate.1}}
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+
+                <div>
+                    <label>
+                        <input type="checkbox"
+                            class="search_refine_all" name="screen"
+                            value="[No screen]" />
+                        [No screen]
+                    </label>
+
+                    {% for plate in plates %}
+                    <div style="margin-left:20px">
+                        <label>
+                            <input type="checkbox"
+                                {% if plate.2 %}checked="checked"{% endif %}
+                                class="search_refine_item" name="limit_plates"
+                                value="{{plate.0}}" />
+                            {{plate.1}}
                         </label>
                     </div>
                     {% endfor %}
