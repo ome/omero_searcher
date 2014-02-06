@@ -6,6 +6,7 @@ import sys
 
 import pyslid
 from omeroweb.omero_searcher.omero_searcher_config import omero_contentdb_path
+from omeroweb.omero_searcher.omero_searcher_config import enabled_featuresets
 pyslid.database.direct.set_contentdb_path(omero_contentdb_path)
 
 
@@ -165,8 +166,8 @@ def runScript():
 
         scripts.String('Feature_set', optional=False, grouping='1',
                        description='SLF set',
-                       values=[rstring('slf33'), rstring('slf34')],
-                       default='slf33'),
+                       values=[rstring(f) for f in enabled_featuresets],
+                       default=enabled_featuresets[0]),
 
         version = '0.0.1',
         authors = ['Marvin the Paranoid Android'],

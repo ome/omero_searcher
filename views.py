@@ -34,6 +34,7 @@ logger = logging.getLogger('searcher')
 
 import pyslid
 from omero_searcher_config import omero_contentdb_path
+from omero_searcher_config import enabled_featuresets
 pyslid.database.direct.set_contentdb_path(omero_contentdb_path)
 import ricerca
 
@@ -363,7 +364,11 @@ def right_plugin_search_form (request, conn=None, **kwargs):
     This generates a search form in the right panel with the currently selected images, allowing
     a user to initialize a content search.
     """
-    context = {'template': 'searcher/right_plugin_search_form.html'}
+
+    context = {
+        'featuresets': enabled_featuresets,
+        'template': 'searcher/right_plugin_search_form.html'
+        }
 
     images = []
 
