@@ -104,12 +104,19 @@ If the automated configuration step failed during installation, or if you
 wish to configure OMERO.searcher and OMERO.web manually, run something
 along the lines of
 
+    # OMERO 4.4
     omero config set omero.web.apps '[..., "omero_searcher"]'
+    # OMERO 5
+    omero config append omero.web.apps '"omero_searcher"'
 
 You will also need to explicitly configure the right hand plugin pane:
 
+    # OMERO 4.4
     omero config set omero.ui.right_plugins \
         '[[...], ["Searcher", "searcher/plugin_config/right_search_form.js.html", "right_search_form"]]'
+    # OMERO 5
+    omero config append omero.ui.right_plugins \
+        '["Searcher", "searcher/plugin_config/right_search_form.js.html", "right_search_form"]'
 
 For further details see
 
