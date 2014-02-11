@@ -144,9 +144,9 @@ def runScript():
                        default=enabled_featuresets[0]),
 
         version = '0.0.1',
-        authors = ['Marvin the Paranoid Android'],
-        institutions = ['Heart of Gold'],
-        contact = 'spli@dundee.ac.uk',
+        authors = ['Murphy Lab'],
+        institutions = ['Carnegie Mellon University'],
+        contact = 'icaoberg@cmu.edu',
     )
 
     try:
