@@ -362,7 +362,7 @@ def runScript():
 
 
         version = '0.0.1',
-        authors = ['Ivan E. Cao-Berg', 'Lane Center for Comp Bio'],
+        authors = ['Murphy Lab'],
         institutions = ['Carnegie Mellon University'],
         contact = 'icaoberg@cmu.edu',
     )
