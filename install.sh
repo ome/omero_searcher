@@ -81,7 +81,7 @@ if [ $NODEPS -eq 1 ]; then
     echo "Skipping dependencies"
 else
     echo "Checking for PIL, numpy and scipy"
-    check_py_mod PIL "ERROR: Please install PIL" 1
+    check_py_mod PIL "ERROR: Please install PIL or Pillow" 1
     check_py_mod numpy "ERROR: Please install numpy" 1
     check_py_mod scipy "ERROR: Please install scipy" 1
     check_py_mod tables \

@@ -27,7 +27,8 @@ On Mac OS X it can be installed using homebrew:
 
     brew install freeimage
 
-Python prerequisites include the PIL, numpy and scipy Python modules.
+Python prerequisites include the PIL or Pillow, numpy and scipy Python
+modules.
 Automatic installation of these modules sometimes fails, so it is
 recommended that you install a distribution supplied version if available.
 For example, on CentOS:
@@ -40,7 +41,7 @@ On Debian:
 
 Alternatively install manually using pip:
 
-    pip install PIL
+    pip install Pillow
     pip install numpy
     pip install scipy
 
