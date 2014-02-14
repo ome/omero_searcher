@@ -6,6 +6,5 @@
 # Note: PySLID has several additional dependencies, including mahotas
 # which requires the freeimage library.
 
-git+git://github.com/icaoberg/pyslid.git@master
-
-git+git://github.com/icaoberg/ricerca.git@master
+pyslid
+ricerca
