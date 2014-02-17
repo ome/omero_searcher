@@ -1,7 +1,7 @@
 import omero
 from omero import scripts
 from omero.util import script_utils
-from omero.rtypes import rstring, rlong
+from omero.rtypes import rstring, rlong, unwrap
 from datetime import datetime
 import itertools
 import sys
@@ -40,37 +40,19 @@ def deleteImageFeatures(conn, cli, image, ftset, field=True):
     if not imAnns:
         return message
 
-    ds = conn.getDeleteService();
-    dcs = []
-    for imAnn in imAnns:
-        fileAnn = imAnn.getChild()
-        dcs.append(omero.api.delete.DeleteCommand(
-                "/Annotation", fileAnn.id.val, None))
-
-    delHandle = ds.queueDelete(dcs)
-    cb = omero.callbacks.DeleteCallbackI(cli, delHandle)
-
+    # This should delete the OriginalFile too
+    delFileIds = [unwrap(a.child.id) for a in imAnns]
+    handle = conn.deleteObjects('/Annotation', delFileIds, True, True)
     try:
-        try:
-            cb.loop(10 * len(dcs), 500)
-        except omero.LockTimeout:
-            m = 'Not finished in %d seconds. Cancelling...' % (len(dcs) * 5)
-            sys.stderr.write(m)
-            message += m
-            if not delHandle.cancel():
-                m = 'ERROR: Failed to cancel\n'
-                sys.stderr.write(m)
+        conn._waitOnCmd(handle, len(delFileIds))
+        rs = handle.getResponse().responses
+        for i in xrange(len(delFileIds)):
+            if rs[i].scheduledDeletes != rs[i].actualDeletes:
+                m = 'Annotation id:%d deletes expected:%d actual:%d\n' % (
+                    delFileIds[i], rs[i].scheduledDeletes, rs[i].actualDeletes)
                 message += m
-
-        reports = delHandle.report()
-        for r in reports:
-            m = 'Delete report: error:%s warning:%s, deleted:%s\n' % (
-                r.error, r.warning, r.actualDeletes)
-            message  += m
-
     finally:
-        #cb.close()
-        pass
+        handle.close()
 
     return message
 
