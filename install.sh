@@ -12,6 +12,7 @@ usage() {
     echo "  --conf5: Attempt to automatically configure for OMERO-5 (default)"
     echo "  --conf4: Attempt to automatically configure for OMERO-4.4"
     echo "  --noconf: Don't attempt to automatically configure any OMERO.web app settings"
+    echo "  This script must be run from the root of the OMERO.searcher archive"
     exit $1
 }
 
@@ -80,7 +81,7 @@ CONFIG="$WEB_DEST/omero_searcher_config.py"
 if [ $NODEPS -eq 1 ]; then
     echo "Skipping dependencies"
 else
-    echo "Checking for PIL, numpy and scipy"
+    echo "Checking for PIL/Pillow, numpy and scipy"
     check_py_mod PIL "ERROR: Please install PIL or Pillow" 1
     check_py_mod numpy "ERROR: Please install numpy" 1
     check_py_mod scipy "ERROR: Please install scipy" 1
@@ -144,12 +145,14 @@ if [ $CONF -eq 5 ]; then
         echo "ERROR: Failed to configure $CONFIGweb"
         exit 2
     }
+    echo "Configured $CONFIGweb"
 
     "$OMERO" config remove "$CONFIGtab" "$TABsearcher" || true
     "$OMERO" config append "$CONFIGtab" "$TABsearcher" || {
         echo "ERROR: Failed to configure $CONFIGtab"
         exit 2
     }
+    echo "Configured $CONFIGtab"
 fi
 
 if [ $CONF -eq 4 ]; then
@@ -171,14 +174,16 @@ if [ $CONF -eq 4 ]; then
             echo "ERROR: Failed to configure $CONFIGweb"
             exit 2
         }
+        echo "Configured $CONFIGweb"
 
         TABacquisition='["Acquisition", "webclient/data/includes/right_plugin.acquisition.js.html", "metadata_tab"]'
         TABpreview='["Preview", "webclient/data/includes/right_plugin.preview.js.html", "preview_tab"]'
-        "$OMERO" config set omero.web.ui.right_plugins \
+        "$OMERO" config set "$CONFIGtab" \
             "[$TABacquisition, $TABpreview, $TABsearcher]" || {
             echo "ERROR: Failed to configure $CONFIGtab"
             exit 2
         }
+        echo "Configured $CONFIGtab"
     else
         # TODO: Automatically append omero_searcher to the omero.web.apps
         # config key (requires parsing the existing value of omero.web.apps
