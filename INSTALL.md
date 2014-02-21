@@ -27,7 +27,8 @@ On Mac OS X it can be installed using homebrew:
 
     brew install freeimage
 
-Python prerequisites include the PIL, numpy and scipy Python modules.
+Python prerequisites include the PIL or Pillow, numpy and scipy Python
+modules.
 Automatic installation of these modules sometimes fails, so it is
 recommended that you install a distribution supplied version if available.
 For example, on CentOS:
@@ -40,7 +41,7 @@ On Debian:
 
 Alternatively install manually using pip:
 
-    pip install PIL
+    pip install Pillow
     pip install numpy
     pip install scipy
 
@@ -50,12 +51,23 @@ Pytables is missing. See
 http://www.openmicroscopy.org/site/support/omero5/sysadmins/unix/server-installation.html
 
 
-Installation script
--------------------
+Installation of OMERO.searcher
+------------------------------
+
+Unzip the archive containing the OMERO.searcher source code or clone the
+GitHub repository, and change into this directory.
+
+An installation script is provided, this should work if your server has not
+been significantly customised. Manual installation instructions are given
+below. Although the script will attempt to auto-configure OMERO some manual
+configuration is still required to setup the filestore used by OMERO.searcher
+for storing features.
+
+### Installation script
 
 The installation script will install OMERO.searcher, retaining the previous
 configuration file if found. It will attempt to install several Python
-dependencies. See below for manual installation instructions.
+dependencies.
 
 To install OMERO.searcher:
 
@@ -67,13 +79,11 @@ Run
 
 for help on additional arguments.
 
-If you have previously installed a web application the OMERO.web
-configuration step will fail, see Configuration below for details on how to
-manually enable OMERO.searcher in OMERO.web.
+If this is the first time you have installed OMERO.searcher or if the
+auto-configuration failed see the Configuration section below.
 
 
-Manual installation
--------------------
+### Manual installation
 
 Install Python dependencies by running
 
@@ -104,12 +114,19 @@ If the automated configuration step failed during installation, or if you
 wish to configure OMERO.searcher and OMERO.web manually, run something
 along the lines of
 
+    # OMERO 4.4
     omero config set omero.web.apps '[..., "omero_searcher"]'
+    # OMERO 5
+    omero config append omero.web.apps '"omero_searcher"'
 
 You will also need to explicitly configure the right hand plugin pane:
 
+    # OMERO 4.4
     omero config set omero.ui.right_plugins \
         '[[...], ["Searcher", "searcher/plugin_config/right_search_form.js.html", "right_search_form"]]'
+    # OMERO 5
+    omero config append omero.ui.right_plugins \
+        '["Searcher", "searcher/plugin_config/right_search_form.js.html", "right_search_form"]'
 
 For further details see
 
