@@ -1,7 +1,7 @@
 import omero
 from omero import scripts
 from omero.util import script_utils
-from omero.rtypes import rstring, rlong
+from omero.rtypes import rstring, rlong, unwrap
 from datetime import datetime
 import itertools
 import sys
@@ -11,6 +11,8 @@ from omeroweb.omero_searcher.omero_searcher_config import omero_contentdb_path
 from omeroweb.omero_searcher.omero_searcher_config import enabled_featuresets
 pyslid.database.direct.set_contentdb_path(omero_contentdb_path)
 
+supportedDataTypes = ['Project', 'Dataset', 'Image',
+                      'Screen', 'Plate', 'PlateAcquisition', 'Well']
 
 
 def deleteImageFeatures(conn, cli, image, ftset, field=True):
@@ -40,39 +42,40 @@ def deleteImageFeatures(conn, cli, image, ftset, field=True):
     if not imAnns:
         return message
 
-    ds = conn.getDeleteService();
-    dcs = []
-    for imAnn in imAnns:
-        fileAnn = imAnn.getChild()
-        dcs.append(omero.api.delete.DeleteCommand(
-                "/Annotation", fileAnn.id.val, None))
-
-    delHandle = ds.queueDelete(dcs)
-    cb = omero.callbacks.DeleteCallbackI(cli, delHandle)
-
+    # This should delete the OriginalFile too
+    delFileIds = [unwrap(a.child.id) for a in imAnns]
+    handle = conn.deleteObjects('/Annotation', delFileIds, True, True)
     try:
-        try:
-            cb.loop(10 * len(dcs), 500)
-        except omero.LockTimeout:
-            m = 'Not finished in %d seconds. Cancelling...' % (len(dcs) * 5)
-            sys.stderr.write(m)
-            message += m
-            if not delHandle.cancel():
-                m = 'ERROR: Failed to cancel\n'
-                sys.stderr.write(m)
+        conn._waitOnCmd(handle, len(delFileIds))
+        rs = handle.getResponse().responses
+        for i in xrange(len(delFileIds)):
+            if rs[i].scheduledDeletes != rs[i].actualDeletes:
+                m = 'Annotation id:%d deletes expected:%d actual:%d\n' % (
+                    delFileIds[i], rs[i].scheduledDeletes, rs[i].actualDeletes)
                 message += m
-
-        reports = delHandle.report()
-        for r in reports:
-            m = 'Delete report: error:%s warning:%s, deleted:%s\n' % (
-                r.error, r.warning, r.actualDeletes)
-            message  += m
-
     finally:
-        #cb.close()
-        pass
+        handle.close()
 
     return message
+
+
+def imageGenerator(parent):
+    """
+    Returns a sequence of images from one or more containers
+    """
+    if isinstance(parent, list):
+        for par in parent:
+            for im in imageGenerator(par):
+                yield im
+    elif parent.OMERO_CLASS == 'Image':
+        yield parent
+    elif parent.OMERO_CLASS == 'WellSample':
+        yield parent.getImage()
+    else:
+        print '%s: %d' % (parent.OMERO_CLASS, parent.id)
+        for ch in parent.listChildren():
+            for im in imageGenerator(ch):
+                yield im
 
 
 def processImages(client, scriptParams):
@@ -92,26 +95,16 @@ def processImages(client, scriptParams):
         if not objects:
             return message
 
-        if dataType == 'Image':
-            for image in objects:
-                message += 'Processing image id:%d\n' % image.getId()
-                m = deleteImageFeatures(conn, client, image, ftset, field=True)
-                message += m
+        if dataType not in supportedDataTypes:
+            m = 'Invalid datatype: %s\n' % datatype
+            sys.stderr.write(m)
+            return message + m
 
-        else:
-            if dataType == 'Project':
-                datasets = [proj.listChildren() for proj in objects]
-                datasets = itertools.chain.from_iterable(datasets)
-            else:
-                datasets = objects
-
-            for d in datasets:
-                message += 'Processing dataset id:%d\n' % d.getId()
-                for image in d.listChildren():
-                    message += 'Processing image id:%d\n' % image.getId()
-                    m = deleteImageFeatures(
-                        conn, client, image, ftset, field=True)
-                    message += m
+        images = imageGenerator(objects)
+        for image in images:
+            message += 'Processing image id:%d\n' % image.getId()
+            m = deleteImageFeatures(conn, client, image, ftset, field=True)
+            message += m
 
     except:
         print message
@@ -131,7 +124,7 @@ def runScript():
 
         scripts.String('Data_Type', optional=False, grouping='1',
                        description='The data you want to work with.',
-                       values=[rstring('Project'), rstring('Dataset'), rstring('Image')],
+                       values=[rstring(dt) for dt in supportedDataTypes],
                        default='Dataset'),
 
         scripts.List(
