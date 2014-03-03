@@ -33,3 +33,13 @@ each other.
 * If images are modified, moved or deleted the feature Content database
 will become desynchronised. If errors occur when performing a search it may
 be necesssary to run the `Rebuild ContentDB` script.
+
+
+Contact
+-------
+
+All feedback, good or bad, is always welcome:
+
+* [Forum](https://www.openmicroscopy.org/community/)
+* [Mailing lists](https://www.openmicroscopy.org/site/community/mailing-lists)
+* [Github issues](https://github.com/openmicroscopy/omero_searcher/issues)
