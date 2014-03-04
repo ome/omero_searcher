@@ -30,9 +30,9 @@ permissions.
 * The OMERO.searcher web-app requires direct access to the features store.
 * Multiple simultaneous feature calculation processes will conflict with
 each other.
-* If images are modified, moved or deleted the feature Content database
-will become desynchronised. If errors occur when performing a search it may
-be necesssary to run the `Rebuild ContentDB` script.
+* If images are modified, moved or deleted then the feature Content
+database will become desynchronized. If errors occur when performing a
+search it may be necesssary to run the `Rebuild ContentDB` script.
 
 
 Contact
